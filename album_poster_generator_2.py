@@ -1,7 +1,7 @@
-from PIL import Image, ImageEnhance
+from PIL import Image
 import math
 
-absolute_directory = "C:/Users/ferdinandleprince/PycharmProjects/pythonProject/"
+absolute_directory = ""
 
 image = Image.open(
     absolute_directory + "downloaded_covers/UNE MAIN LAVE L'AUTRE - Alpha Wann.jpg")
@@ -11,7 +11,6 @@ autoreduction = 50
 channels = "RGB"
 
 small_cover = image.reduce(reduction)
-small_cover.save("small_cover.tiff")
 pixels = list()
 for i in range(math.ceil(1000 / reduction)):
     for j in range(math.ceil(1000 / reduction)):

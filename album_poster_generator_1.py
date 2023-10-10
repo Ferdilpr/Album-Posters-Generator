@@ -9,7 +9,7 @@ DOMAIN = "https://api.deezer.com/"
 search_domain = DOMAIN + "search/album"
 album_domain = DOMAIN + "album/"
 
-absolute_directory = "C:/Users/ferdinandleprince/PycharmProjects/pythonProject/"
+absolute_directory = ""
 download_directory = absolute_directory + "downloaded_covers/"
 
 print("Bienvenue dans le générateur de poster de cover d'album !\n")
