@@ -1,16 +1,8 @@
 import math
 
 from PIL import Image, ImageFilter, ImageDraw, ImageFont, ImageEnhance
-import requests
-import shutil
-from datetime import datetime
 
-DOMAIN = "https://api.deezer.com/"
-search_domain = DOMAIN + "search/album"
-album_domain = DOMAIN + "album/"
-
-absolute_directory = ""
-download_directory = absolute_directory + "downloaded_covers/"
+import core
 
 print("Bienvenue dans le générateur de poster de cover d'album !\n")
 
@@ -27,10 +19,10 @@ while True:
         background_darkness = 0.4
         default_album_name_font_size_percentage = 3.1
         default_artist_name_font_size_percentage = 2.1
-        default_album_infos_font_size_percentage = 1.15
+        default_album_infos_font_size_percentage = 1.4
         resolution_multiplicator = 2
-        center_image_shadow_blur = 9
-        center_image_shadow_size_percentage = 1.2
+        center_image_shadow_blur = 10
+        center_image_shadow_size_percentage = 1
         center_image_shadow_color = (0, 0, 0)
         background_saturation = 1.75
     elif mode == "custom":
@@ -69,58 +61,21 @@ while True:
 
     print("\nEntrez le nom d'un album :")
     album_to_search = input("> ")
-    PARAMS = {"q": album_to_search}
 
-    response_raw = requests.get(url=search_domain, params=PARAMS)
-    response = response_raw.json()
-    result_id = str(response["data"][0]["id"])
-
-    response_raw = requests.get(url=album_domain + result_id)
-    response = response_raw.json()
-
-    album_name = response["title"]
-
-    artist_name = response["artist"]["name"]
-    if len(response["contributors"]) > 1:
-        for i in range(1, len(response["contributors"])):
-            artist_name = artist_name + ", " + response["contributors"][i]["name"]
-
-    release_date_raw = response["release_date"]
-    release_date = datetime.strptime(release_date_raw, "%Y-%m-%d").strftime('%d/%m/%Y')
-
-    tracks_count_raw = int(response["nb_tracks"])
-    tracks_count = str(tracks_count_raw) + " titres"
-    if tracks_count_raw > 22:
-        RuntimeError("The album contains too much tracks")
-
-    duration_raw = response["duration"]
-    minutes = math.floor(duration_raw / 60)
-    seconds = duration_raw - minutes * 60
-    if seconds >= 10:
-        seconds_formated = str(seconds)
-    else:
-        seconds_formated = "0" + str(seconds)
-    duration = str(minutes) + " min " + seconds_formated
+    album = core.getAlbum(album_to_search)
 
     tracks = ""
     tracks_second = ""
     longest_track = 0
     longest_second_track = 0
-    if tracks_count_raw <= 16:
+    if album.tracks_count_raw <= 16:
         max_per_column = 8
-        default_text_font_size_percentage = 1 + 4 / min(tracks_count_raw, 8)
+        default_text_font_size_percentage = 1 + 4 / min(album.tracks_count_raw, 8)
     else:
         max_per_column = 11
         default_text_font_size_percentage = 1.2
 
-    file_name = album_name + " - " + artist_name + ".jpg"
-    image_response = requests.get(response["cover_xl"], stream=True)
-    with open(download_directory + file_name, "wb") as f:
-        shutil.copyfileobj(image_response.raw, f)
-
-    cover_link = download_directory + file_name
-
-    cover = Image.open(cover_link).convert("RGB")
+    cover = Image.open(album.cover_link).convert("RGB")
 
     cover = cover.resize(
         (math.ceil(cover.size[0] * resolution_multiplicator), math.ceil(cover.size[1] * resolution_multiplicator)))
@@ -133,18 +88,18 @@ while True:
 
     text_font_size = default_text_font_size_percentage * cover_height / 100
     ImageDraw.ImageDraw.font = ImageFont.truetype(
-        absolute_directory + "fonts/Poppins-Italic.ttf",
+        "fonts/Poppins-Italic.ttf",
         size=math.ceil(text_font_size))
 
-    for i in range(0, min(tracks_count_raw, max_per_column)):
-        track_title = response["tracks"]["data"][i]["title"]
+    for i in range(0, min(album.tracks_count_raw, max_per_column)):
+        track_title = album.tracks[i]["title"]
         formated_track = str(i + 1) + ". " + track_title + "\n"
         tracks += formated_track
         if ImageDraw.ImageDraw.font.getlength(formated_track) > longest_track:
             longest_track = ImageDraw.ImageDraw.font.getlength(formated_track)
 
-    for i in range(max_per_column, tracks_count_raw):
-        track_title = response["tracks"]["data"][i]["title"]
+    for i in range(max_per_column, album.tracks_count_raw):
+        track_title = album.tracks[i]["title"]
         formated_track_second = str(i + 1) + ". " + track_title + "\n"
         tracks_second += formated_track_second
         if ImageDraw.ImageDraw.font.getlength(formated_track_second) > longest_second_track:
@@ -152,26 +107,26 @@ while True:
 
     album_infos_font_size = default_album_infos_font_size_percentage * cover_height / 100
     album_infos_font = ImageFont.truetype(
-        absolute_directory + "fonts/Poppins-Light.ttf",
+        "fonts/Poppins-Light.ttf",
         size=math.ceil(album_infos_font_size))
 
-    if len(album_name) > 10:
+    if len(album.album_name) > 10:
         album_name_font_size = default_album_name_font_size_percentage * cover_height / 100 - (
-                len(album_name) - 10) * 0.7
+                len(album.album_name) - 10) * 0.7
     else:
         album_name_font_size = default_album_name_font_size_percentage * cover_height / 100
     album_name_font = ImageFont.truetype(
-        absolute_directory + "fonts/Poppins-ExtraBold.ttf",
+        "fonts/Poppins-ExtraBold.ttf",
         size=math.ceil(album_name_font_size))
 
-    if len(artist_name) > 15:
+    if len(album.artist_name) > 15:
         artist_name_font_size = default_artist_name_font_size_percentage * cover_height / 100 - (
-                len(artist_name) - 10) * 0.25
+                len(album.artist_name) - 10) * 0.25
     else:
         artist_name_font_size = default_artist_name_font_size_percentage * cover_height / 100 - (
-                len(album_name) - 10) * 0.15
+                len(album.album_name) - 10) * 0.15
     artist_name_font = ImageFont.truetype(
-        absolute_directory + "fonts/Poppins-Regular.ttf",
+        "fonts/Poppins-Regular.ttf",
         size=math.ceil(artist_name_font_size))
 
     center_image_padding_sides = math.ceil(poster_width * center_image_padding_sides_percentage / 100)
@@ -191,9 +146,9 @@ while True:
     center_image_shadow_mask_cutout = ImageDraw.Draw(center_image_shadow_mask)
     center_image_shadow_size = (center_image_shadow_size_percentage - 1) * poster_width / 100
     center_image_shadow_mask_cutout_size = (
-    center_image_padding_sides - center_image_shadow_size, center_image_padding_top - center_image_shadow_size,
-    center_image_padding_sides + center_image_size + center_image_shadow_size,
-    center_image_padding_top + center_image_size + center_image_shadow_size)
+        center_image_padding_sides - center_image_shadow_size, center_image_padding_top - center_image_shadow_size,
+        center_image_padding_sides + center_image_size + center_image_shadow_size,
+        center_image_padding_top + center_image_size + center_image_shadow_size)
     center_image_shadow_mask_cutout.rectangle(center_image_shadow_mask_cutout_size, fill=255)
     center_image_shadow_mask = center_image_shadow_mask.filter(
         ImageFilter.GaussianBlur(center_image_shadow_blur * resolution_multiplicator))
@@ -202,32 +157,32 @@ while True:
     poster.paste(center_image, (center_image_padding_sides, center_image_padding_top))
 
     draw = ImageDraw.Draw(poster)
-
     top_offset = center_image_padding_top + center_image_size + cover_height * 0.015
-    draw.text((center_image_padding_sides, top_offset), album_name.upper(), font=album_name_font)
+    draw.text((center_image_padding_sides, top_offset), album.album_name.upper(), font=album_name_font)
 
     top_offset += album_name_font_size + cover_height * 0.015
-    draw.text((center_image_padding_sides, top_offset), artist_name.upper(), font=artist_name_font)
+    draw.text((center_image_padding_sides, top_offset), album.artist_name.upper(), font=artist_name_font)
 
     top_offset += artist_name_font_size + cover_height * 0.02
-    draw.line((center_image_padding_sides, top_offset) + (center_image_size + center_image_padding_sides, math.ceil(top_offset)),
-              width=math.ceil(0.001 * cover_height))
+    draw.line((center_image_padding_sides, top_offset) + (
+    center_image_size + center_image_padding_sides, math.ceil(top_offset)),
+              width=math.ceil(0.0025 * cover_height))
 
     line_spacing = text_font_size / 2
-    top_offset += cover_height * 0.03
+    top_offset += cover_height * 0.02
     draw.multiline_text((center_image_padding_sides, top_offset), tracks, spacing=line_spacing)
     tracks_second_offset = ((poster_width - center_image_padding_sides - longest_second_track) + (
-                center_image_padding_sides + longest_track)) / 2
+            center_image_padding_sides + longest_track)) / 2
     draw.multiline_text((tracks_second_offset, top_offset),
                         tracks_second, spacing=line_spacing)
 
-    line_spacing = album_infos_font_size / 2
-    album_infos = tracks_count + "\n" + release_date + "\n" + duration
+    line_spacing = album_infos_font_size / 2.5
+    album_infos = album.tracks_count + "\n" + album.release_date + "\n" + album.duration
     top_offset = center_image_padding_top + center_image_size + cover_height * 0.05
     draw.multiline_text((poster_width - center_image_padding_sides, top_offset), album_infos, align="right",
-                        anchor="rm", font=album_infos_font, spacing=line_spacing)
+                        anchor="rm", font=album_infos_font)
 
-    target_file_name = "results/" + "Poster " + album_name + " - " + artist_name + ".png"
+    target_file_name = "results/" + "Poster " + album.album_name + " - " + album.artist_name + ".png"
     poster.save(target_file_name)
     poster.show()
 
