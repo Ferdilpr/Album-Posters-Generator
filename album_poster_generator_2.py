@@ -3,10 +3,17 @@ import core
 import math
 
 
+poster_width_percentage = 68
+resolution_multiplicator = 1
+background_color = (234, 212, 199)
+center_image_padding_sides_percentage = 6
+center_image_padding_top_percentage = 5.5
+
+
 image_link = core.getAlbum(input("album > ")).cover_link
 image = Image.open(image_link)
 
-reduction = 10
+reduction = 50
 channels = "RGB"
 
 small_cover = image.reduce(reduction).convert(channels)
@@ -27,7 +34,7 @@ def distance_couleur(couleur1, couleur2):
 
 
 important_pixels = []
-default_threshold = 120
+default_threshold = 100
 threshold = default_threshold
 pixels = []
 skip_to = 0
@@ -57,9 +64,17 @@ while len(important_pixels) != 5:
 
 print(str(important_pixels) + str(threshold))
 
+poster_height = math.ceil(image.size[1] * resolution_multiplicator)
+poster_width = math.ceil(poster_height * poster_width_percentage / 100)
+poster = Image.new(channels,
+                   (poster_width, poster_height),
+                   background_color)
 
-result = image.copy()
-for i in range(len(important_pixels)):
-    color = Image.new(channels, (math.ceil(image.size[0] / len(important_pixels)), 150), important_pixels[i])
-    result.paste(color, (math.ceil(i * (image.size[0] / len(important_pixels))), 0))
-result.show()
+center_image_padding_sides = math.ceil(center_image_padding_sides_percentage * poster_width / 100)
+center_image_padding_top = math.ceil(center_image_padding_top_percentage * poster_width / 100)
+center_image_size = math.ceil(poster_width - center_image_padding_sides * 2)
+
+cover = image.copy().resize((center_image_size, center_image_size))
+poster.paste(cover, (center_image_padding_sides, center_image_padding_top))
+
+poster.show()

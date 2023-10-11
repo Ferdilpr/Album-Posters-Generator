@@ -22,10 +22,11 @@ class Album:
     duration = "0 min 00"
     cover_link = "download_directory/cover.jpg"
     tracks = [{"title": "ALAKAZAM", "note": "8.5/10"}, {"title": "Garçon", "note": "10/10"}]
+    label = "Sublime"
 
     def __init__(self, _album_name=album_name, _release_date=release_date, _tracks_count_raw=tracks_count_raw,
                  _tracks_count=tracks_count, _duration_raw=duration_raw, _duration=duration, _cover_link=cover_link,
-                 _tracks=tracks, _artist_name=artist_name):
+                 _tracks=tracks, _artist_name=artist_name, _label=label):
         self.album_name = _album_name
         self.release_date = _release_date
         self.tracks_count_raw = _tracks_count_raw
@@ -35,6 +36,7 @@ class Album:
         self.cover_link = _cover_link
         self.tracks = _tracks
         self.artist_name = _artist_name
+        self.label = _label
 
 
 def getAlbum(album_to_search):
@@ -80,6 +82,8 @@ def getAlbum(album_to_search):
 
     tracks = response["tracks"]["data"]
 
+    label = response["label"]
+
     album = Album(album_name, release_date, tracks_count_raw, tracks_count, duration_raw,
-                  duration, cover_link, tracks, artist_name)
+                  duration, cover_link, tracks, artist_name, label)
     return album
