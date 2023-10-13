@@ -3,6 +3,7 @@ import math
 import requests
 import shutil
 from datetime import datetime
+from PIL import Image, ImageFilter, ImageDraw, ImageFont, ImageEnhance
 
 DOMAIN = "https://api.deezer.com/"
 search_domain = DOMAIN + "search/album"
@@ -13,7 +14,7 @@ download_directory = absolute_directory + "downloaded_covers/"
 
 
 class Album:
-    album_name = "Garçon"        # example values
+    album_name = "Garçon"  # example values
     artist_name = "Luther"
     release_date = "01/01/2000"
     tracks_count_raw = 0
@@ -87,3 +88,24 @@ def getAlbum(album_to_search):
     album = Album(album_name, release_date, tracks_count_raw, tracks_count, duration_raw,
                   duration, cover_link, tracks, artist_name, label)
     return album
+
+
+def blurred_backround(cover, blur_radius=25, width_ratio=70.7143, darkness=0.4,
+                      resolution_multiplicator=1, saturation=1.75):
+
+    cover = cover.resize(
+        (math.ceil(cover.size[0] * resolution_multiplicator), math.ceil(cover.size[1] * resolution_multiplicator)))
+
+    (cover_width, cover_height) = cover.size
+    poster_width = math.ceil(cover_height * width_ratio / 100)
+    left = (cover_width - poster_width) / 2
+    right = cover_width - left
+    (upper, lower) = (0, cover_height)
+
+    poster = cover.filter(ImageFilter.GaussianBlur(blur_radius * resolution_multiplicator))
+    poster = poster.crop((math.ceil(left), upper, math.ceil(right), lower))
+    poster = ImageEnhance.Color(poster).enhance(saturation)
+    black_background_profile = Image.new("RGB", poster.size, (0, 0, 0))
+    poster = Image.blend(poster, black_background_profile, darkness)
+
+    return poster

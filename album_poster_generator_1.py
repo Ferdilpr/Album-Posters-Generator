@@ -77,16 +77,11 @@ while True:
 
     cover = Image.open(album.cover_link).convert("RGB")
 
-    cover = cover.resize(
-        (math.ceil(cover.size[0] * resolution_multiplicator), math.ceil(cover.size[1] * resolution_multiplicator)))
+    poster = core.blurred_backround(cover, background_blur_radius, poster_width_percentage,
+                                    background_darkness, resolution_multiplicator, background_saturation)
+    (poster_width, poster_height) = poster.size
 
-    (cover_width, cover_height) = cover.size
-    poster_width = math.ceil(cover_height * poster_width_percentage / 100)
-    left = (cover_width - poster_width) / 2
-    right = cover_width - left
-    (upper, lower) = (0, cover_height)
-
-    text_font_size = default_text_font_size_percentage * cover_height / 100
+    text_font_size = default_text_font_size_percentage * poster_height / 100
     ImageDraw.ImageDraw.font = ImageFont.truetype(
         "fonts/Poppins-Italic.ttf",
         size=math.ceil(text_font_size))
@@ -105,25 +100,25 @@ while True:
         if ImageDraw.ImageDraw.font.getlength(formated_track_second) > longest_second_track:
             longest_second_track = ImageDraw.ImageDraw.font.getlength(formated_track_second)
 
-    album_infos_font_size = default_album_infos_font_size_percentage * cover_height / 100
+    album_infos_font_size = default_album_infos_font_size_percentage * poster_height / 100
     album_infos_font = ImageFont.truetype(
         "fonts/Poppins-Light.ttf",
         size=math.ceil(album_infos_font_size))
 
     if len(album.album_name) > 10:
-        album_name_font_size = default_album_name_font_size_percentage * cover_height / 100 - (
+        album_name_font_size = default_album_name_font_size_percentage * poster_height / 100 - (
                 len(album.album_name) - 10) * 0.7
     else:
-        album_name_font_size = default_album_name_font_size_percentage * cover_height / 100
+        album_name_font_size = default_album_name_font_size_percentage * poster_height / 100
     album_name_font = ImageFont.truetype(
         "fonts/Poppins-ExtraBold.ttf",
         size=math.ceil(album_name_font_size))
 
     if len(album.artist_name) > 15:
-        artist_name_font_size = default_artist_name_font_size_percentage * cover_height / 100 - (
+        artist_name_font_size = default_artist_name_font_size_percentage * poster_height / 100 - (
                 len(album.artist_name) - 10) * 0.25
     else:
-        artist_name_font_size = default_artist_name_font_size_percentage * cover_height / 100 - (
+        artist_name_font_size = default_artist_name_font_size_percentage * poster_height / 100 - (
                 len(album.album_name) - 10) * 0.15
     artist_name_font = ImageFont.truetype(
         "fonts/Poppins-Regular.ttf",
@@ -135,14 +130,8 @@ while True:
 
     center_image = cover.resize((center_image_size, center_image_size))
 
-    poster = cover.filter(ImageFilter.GaussianBlur(background_blur_radius * resolution_multiplicator))
-    poster = poster.crop((math.ceil(left), upper, math.ceil(right), lower))
-    poster = ImageEnhance.Color(poster).enhance(background_saturation)
-    black_background_profile = Image.new("RGB", poster.size, (0, 0, 0))
-    poster = Image.blend(poster, black_background_profile, background_darkness)
-
     center_image_shadow_background = Image.new("RGB", poster.size, center_image_shadow_color)
-    center_image_shadow_mask = black_background_profile.copy().convert("L")
+    center_image_shadow_mask = Image.new("L", poster.size, 0)
     center_image_shadow_mask_cutout = ImageDraw.Draw(center_image_shadow_mask)
     center_image_shadow_size = (center_image_shadow_size_percentage - 1) * poster_width / 100
     center_image_shadow_mask_cutout_size = (
@@ -157,19 +146,19 @@ while True:
     poster.paste(center_image, (center_image_padding_sides, center_image_padding_top))
 
     draw = ImageDraw.Draw(poster)
-    top_offset = center_image_padding_top + center_image_size + cover_height * 0.015
+    top_offset = center_image_padding_top + center_image_size + poster_height * 0.015
     draw.text((center_image_padding_sides, top_offset), album.album_name.upper(), font=album_name_font)
 
-    top_offset += album_name_font_size + cover_height * 0.015
+    top_offset += album_name_font_size + poster_height * 0.015
     draw.text((center_image_padding_sides, top_offset), album.artist_name.upper(), font=artist_name_font)
 
-    top_offset += artist_name_font_size + cover_height * 0.02
+    top_offset += artist_name_font_size + poster_height * 0.02
     draw.line((center_image_padding_sides, top_offset) + (
-    center_image_size + center_image_padding_sides, math.ceil(top_offset)),
-              width=math.ceil(0.0025 * cover_height))
+        center_image_size + center_image_padding_sides, math.ceil(top_offset)),
+              width=math.ceil(0.0025 * poster_height))
 
     line_spacing = text_font_size / 2
-    top_offset += cover_height * 0.02
+    top_offset += poster_height * 0.02
     draw.multiline_text((center_image_padding_sides, top_offset), tracks, spacing=line_spacing)
     tracks_second_offset = ((poster_width - center_image_padding_sides - longest_second_track) + (
             center_image_padding_sides + longest_track)) / 2
@@ -178,7 +167,7 @@ while True:
 
     line_spacing = album_infos_font_size / 2.5
     album_infos = album.tracks_count + "\n" + album.release_date + "\n" + album.duration
-    top_offset = center_image_padding_top + center_image_size + cover_height * 0.05
+    top_offset = center_image_padding_top + center_image_size + poster_height * 0.05
     draw.multiline_text((poster_width - center_image_padding_sides, top_offset), album_infos, align="right",
                         anchor="rm", font=album_infos_font)
 

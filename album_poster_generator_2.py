@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import core
 import math
 
@@ -8,6 +8,8 @@ resolution_multiplicator = 1
 background_color = (234, 212, 199)
 center_image_padding_sides_percentage = 6
 center_image_padding_top_percentage = 5.5
+color_size_percentage = 6
+colors_spacing = 0.3
 
 
 image_link = core.getAlbum(input("album > ")).cover_link
@@ -33,8 +35,25 @@ def distance_couleur(couleur1, couleur2):
     return max(max(abs(r1 - r2), abs(g1 - g2)), b1 - b2)
 
 
+def average_color(colors):
+    r_sum = 0
+    g_sum = 0
+    b_sum = 0
+    for a in range(len(colors)):
+        r, g, b = colors[a]
+        r_sum += r
+        g_sum += g
+        b_sum += b
+    return math.ceil(r_sum / len(colors)), math.ceil(g_sum / len(colors)), math.ceil(b_sum / len(colors))
+
+
+def invert_color(color_to_invert):
+    r, g, b = color_to_invert
+    return 255 - r, 255 - g, 255 - b
+
+
 important_pixels = []
-default_threshold = 100
+default_threshold = 80
 threshold = default_threshold
 pixels = []
 skip_to = 0
@@ -62,6 +81,8 @@ while len(important_pixels) != 5:
     if len(important_pixels) == skip_to:
         break
 
+background_color = invert_color(average_color(constant_pixels))
+
 print(str(important_pixels) + str(threshold))
 
 poster_height = math.ceil(image.size[1] * resolution_multiplicator)
@@ -76,5 +97,14 @@ center_image_size = math.ceil(poster_width - center_image_padding_sides * 2)
 
 cover = image.copy().resize((center_image_size, center_image_size))
 poster.paste(cover, (center_image_padding_sides, center_image_padding_top))
+
+draw = ImageDraw.Draw(poster)
+
+top_offset = math.ceil(center_image_padding_top * 1.5 + center_image_size)
+color_size = math.ceil(color_size_percentage * poster_width / 100)
+for i in range(len(important_pixels)):
+    color = Image.new(channels, (color_size, color_size), important_pixels[i])
+    horizontal_offset = math.ceil(poster_width - center_image_padding_sides - (color_size * i * colors_spacing) - (color_size * (i+1)))
+    poster.paste(color, (horizontal_offset, top_offset))
 
 poster.show()
