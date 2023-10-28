@@ -1,0 +1,16 @@
+[
+  {
+    "default": [
+      {
+        "backgroun_blur_radius": 25
+      }
+    ]
+  },
+  {
+    "new": [
+      {
+        "backgroun_blur_radius": 10
+      }
+    ]
+  }
+]

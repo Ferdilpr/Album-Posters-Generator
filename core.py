@@ -1,4 +1,5 @@
 import math
+import string
 
 import requests
 import shutil
@@ -8,9 +9,7 @@ from PIL import Image, ImageFilter, ImageDraw, ImageFont, ImageEnhance
 DOMAIN = "https://api.deezer.com/"
 search_domain = DOMAIN + "search/album"
 album_domain = DOMAIN + "album/"
-
-absolute_directory = ""
-download_directory = absolute_directory + "downloaded_covers/"
+track_domain = DOMAIN + "track/"
 
 
 class Album:
@@ -41,6 +40,9 @@ class Album:
 
 
 def getAlbum(album_to_search):
+    absolute_directory = ""
+    download_directory = absolute_directory + "downloaded_covers/"
+
     PARAMS = {"q": album_to_search}
 
     response_raw = requests.get(url=search_domain, params=PARAMS)
@@ -74,14 +76,34 @@ def getAlbum(album_to_search):
         seconds_formated = "0" + str(seconds)
     duration = str(minutes) + " min " + seconds_formated
 
-    file_name = album_name + " - " + artist_name + ".jpg"
-    image_response = requests.get(response["cover_xl"], stream=True)
-    with open(download_directory + file_name, "wb") as f:
-        shutil.copyfileobj(image_response.raw, f)
+    if response["cover_xl"] is not None:
+        file_name = album_name + " - " + artist_name + ".jpg"
+        image_response = requests.get(response["cover_xl"], stream=True)
+        with open(download_directory + file_name, "wb") as f:
+            shutil.copyfileobj(image_response.raw, f)
+    else:
+        file_name = input("\n Aucune cover n'est renseignée pour l'instant, téléchargez-en une dans le répertoire " + download_directory + " puis entrez le nom du fichier. \n > ")
 
     cover_link = download_directory + file_name
 
-    tracks = response["tracks"]["data"]
+    tracks = []
+    tracks_raw = response["tracks"]["data"]
+    for track in tracks_raw:
+        formatted_title = str(track["title"].rsplit(" (")[0])
+        track_response_raw = requests.get(track_domain + str(track["id"]))
+        track_response = track_response_raw.json()
+        if len(track_response["contributors"]) > len(response["contributors"]):
+            formatted_title = formatted_title + " (feat."
+            contributors = []
+            for i in range(len(response["contributors"]), len(track_response["contributors"])):
+                if track_response["contributors"][i]["name"] != response["artist"]["name"] and track_response["contributors"][i]["name"] not in contributors:
+                    contributors.append(track_response["contributors"][i]["name"])
+            for contributor in contributors:
+                formatted_title = formatted_title + " " + contributor + ","
+            formatted_title = formatted_title.removesuffix(",")
+            formatted_title = formatted_title + ")"
+        track["title"] = formatted_title
+        tracks.append(track)
 
     label = response["label"]
 
