@@ -12,21 +12,90 @@ album_domain = DOMAIN + "album/"
 track_domain = DOMAIN + "track/"
 
 
-class Album:
-    album_name = "Garçon"  # example values
-    artist_name = "Luther"
-    release_date = "01/01/2000"
-    tracks_count_raw = 0
-    tracks_count = "0 titres"
-    duration_raw = 0
-    duration = "0 min 00"
-    cover_link = "download_directory/cover.jpg"
-    tracks = [{"title": "ALAKAZAM", "note": "8.5/10"}, {"title": "Garçon", "note": "10/10"}]
-    label = "Sublime"
+class Setting:
+    def __init__(
+            self,
+            background_blur_radius,
+            poster_width_percentage,
+            center_image_padding_sides_percentage,
+            center_image_padding_top_percentage,
+            background_darkness,
+            default_album_name_font_size_percentage,
+            default_artist_name_font_size_percentage,
+            default_album_infos_font_size_percentage,
+            resolution_multiplicator,
+            center_image_shadow_blur,
+            center_image_shadow_size_percentage,
+            center_image_shadow_color,
+            background_saturation
 
-    def __init__(self, _album_name=album_name, _release_date=release_date, _tracks_count_raw=tracks_count_raw,
-                 _tracks_count=tracks_count, _duration_raw=duration_raw, _duration=duration, _cover_link=cover_link,
-                 _tracks=tracks, _artist_name=artist_name, _label=label):
+    ):
+        self.background_blur_radius = background_blur_radius
+        self.poster_width_percentage = poster_width_percentage
+        self.center_image_padding_sides_percentage = center_image_padding_sides_percentage
+        self.center_image_padding_top_percentage = center_image_padding_top_percentage
+        self.background_darkness = background_darkness
+        self.default_album_name_font_size_percentage = default_album_name_font_size_percentage
+        self.default_artist_name_font_size_percentage = default_artist_name_font_size_percentage
+        self.default_album_infos_font_size_percentage = default_album_infos_font_size_percentage
+        self.resolution_multiplicator = resolution_multiplicator
+        self.center_image_shadow_blur = center_image_shadow_blur
+        self.center_image_shadow_size_percentage = center_image_shadow_size_percentage
+        self.center_image_shadow_color = center_image_shadow_color
+        self.background_saturation = background_saturation
+
+    def copy(self,
+             background_blur_radius=None,
+             poster_width_percentage=None,
+             center_image_padding_sides_percentage=None,
+             center_image_padding_top_percentage=None,
+             background_darkness=None,
+             default_album_name_font_size_percentage=None,
+             default_artist_name_font_size_percentage=None,
+             default_album_infos_font_size_percentage=None,
+             resolution_multiplicator=None,
+             center_image_shadow_blur=None,
+             center_image_shadow_size_percentage=None,
+             center_image_shadow_color=None,
+             background_saturation=None
+             ):
+        copy = self
+
+        if background_blur_radius is not None:
+            copy.background_blur_radius = background_blur_radius
+        if poster_width_percentage is not None:
+            copy.poster_width_percentage = poster_width_percentage
+        if center_image_padding_sides_percentage is not None:
+            copy.center_image_padding_sides_percentage = center_image_padding_sides_percentage
+        if center_image_padding_top_percentage is not None:
+            copy.center_image_padding_top_percentage = center_image_padding_top_percentage
+        if background_darkness is not None:
+            copy.background_darkness = background_darkness
+        if default_album_name_font_size_percentage is not None:
+            copy.default_album_name_font_size_percentage = default_album_name_font_size_percentage
+        if default_artist_name_font_size_percentage is not None:
+            copy.default_artist_name_font_size_percentage = default_artist_name_font_size_percentage
+        if default_album_infos_font_size_percentage is not None:
+            copy.default_album_infos_font_size_percentage = default_album_infos_font_size_percentage
+        if resolution_multiplicator is not None:
+            copy.resolution_multiplicator = resolution_multiplicator
+        if center_image_shadow_blur is not None:
+            copy.center_image_shadow_blur = center_image_shadow_blur
+        if center_image_shadow_size_percentage is not None:
+            copy.center_image_shadow_size_percentage = center_image_shadow_size_percentage
+        if center_image_shadow_color is not None:
+            copy.center_image_shadow_color = center_image_shadow_color
+        if background_saturation is not None:
+            copy.background_saturation = background_saturation
+
+        return copy
+
+
+class Album:
+
+    def __init__(self, _album_name="", _release_date="", _tracks_count_raw=0,
+                 _tracks_count="", _duration_raw="", _duration="", _cover_link="",
+                 _tracks="", _artist_name="", _label=""):
         self.album_name = _album_name
         self.release_date = _release_date
         self.tracks_count_raw = _tracks_count_raw
@@ -82,7 +151,8 @@ def getAlbum(album_to_search):
         with open(download_directory + file_name, "wb") as f:
             shutil.copyfileobj(image_response.raw, f)
     else:
-        file_name = input("\n Aucune cover n'est renseignée pour l'instant, téléchargez-en une dans le répertoire " + download_directory + " puis entrez le nom du fichier. \n > ")
+        file_name = input(
+            "\n Aucune cover n'est renseignée pour l'instant, téléchargez-en une dans le répertoire " + download_directory + " puis entrez le nom du fichier. \n > ")
 
     cover_link = download_directory + file_name
 
@@ -96,7 +166,8 @@ def getAlbum(album_to_search):
             formatted_title = formatted_title + " (feat."
             contributors = []
             for i in range(len(response["contributors"]), len(track_response["contributors"])):
-                if track_response["contributors"][i]["name"] != response["artist"]["name"] and track_response["contributors"][i]["name"] not in contributors:
+                if track_response["contributors"][i]["name"] != response["artist"]["name"] and \
+                        track_response["contributors"][i]["name"] not in contributors:
                     contributors.append(track_response["contributors"][i]["name"])
             for contributor in contributors:
                 formatted_title = formatted_title + " " + contributor + ","
@@ -114,7 +185,6 @@ def getAlbum(album_to_search):
 
 def blurred_backround(cover, blur_radius=25, width_ratio=70.7143, darkness=0.4,
                       resolution_multiplicator=1, saturation=1.75):
-
     cover = cover.resize(
         (math.ceil(cover.size[0] * resolution_multiplicator), math.ceil(cover.size[1] * resolution_multiplicator)))
 
