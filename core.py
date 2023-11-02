@@ -163,7 +163,7 @@ def getAlbum(album_to_search):
         track_response_raw = requests.get(track_domain + str(track["id"]))
         track_response = track_response_raw.json()
         if len(track_response["contributors"]) > len(response["contributors"]):
-            formatted_title = formatted_title + " (feat."
+            formatted_title = formatted_title + " (&"
             contributors = []
             for i in range(len(response["contributors"]), len(track_response["contributors"])):
                 if track_response["contributors"][i]["name"] != response["artist"]["name"] and \

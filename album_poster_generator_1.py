@@ -22,7 +22,7 @@ defaultSetting = core.Setting(
 
 storySetting = defaultSetting.copy(
     poster_width_percentage=56.25,
-    center_image_padding_top_percentage=20,
+    center_image_padding_top_percentage=22,
     default_album_name_font_size_percentage=3.5,
     default_artist_name_font_size_percentage=2.5,
     default_album_infos_font_size_percentage=1.8,
