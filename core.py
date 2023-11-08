@@ -130,16 +130,14 @@ class Setting(object):
 
         return copy
 
-    def toJSON(self):
-        return json.dumps(self, default=lambda o: o.__dict__,
-                          sort_keys=True, indent=4)
-
 
 class Album:
 
     def __init__(self, _album_name="", _release_date="", _tracks_count_raw=0,
                  _tracks_count="", _duration_raw="", _duration="", _cover_link="",
-                 _tracks="", _artist_name="", _label=""):
+                 _tracks=None, _artist_name="", _label=""):
+        if _tracks is None:
+            _tracks = []
         self.album_name = _album_name
         self.release_date = _release_date
         self.tracks_count_raw = _tracks_count_raw
@@ -196,6 +194,74 @@ def newSetting(new_setting):
     settings_json += "]"
     settings_file = open("settings.json", "w")
     settings_file.write(settings_json)
+
+
+def customSetting(settings, settings_list):
+    print()
+    for i in range(len(settings_list)):
+        print(str(i + 1) + ". " + settings_list[i].name)
+    try:
+        profile = int(input("Entrez le numéro du profil souhaité (aucun pour en créer un nouveau) > "))
+    except ValueError:
+        profile = None
+    if profile is not None and profile in range(1, len(settings_list) + 1):
+        setting = settings_list[profile - 1]
+    else:
+        profile = None
+    if profile is None:
+        print("\nMode de génération Personnalisé !\nEntrez les informations suivantes :")
+        try:
+            setting = Setting(
+                float(input(
+                    "flou d'arrière plan (" + str(settings['default'].background_blur_radius) + " par défaut) > ")),
+                float(input("rapport largeur/longueur en pourcentage (" + str(
+                    settings['default'].poster_width_percentage) + " par défaut pour du A3) > ")),
+                float(input("pourcentage de la largeur consacré aux marges autour de la cover (" + str(
+                    settings['default'].center_image_padding_sides_percentage) + " par défaut) > ")),
+                float(input("pourcentage de la largeur consacré à la marge au dessus de la cover (" + str(
+                    settings['default'].center_image_padding_top_percentage) + " par défaut) > ")),
+                float(input(
+                    "assombrissement de l'arrière de 0 la couleur de base, à 1 l'arrière' toute noir (" + str(
+                        settings['default'].background_darkness) + " par "
+                                                                   "défaut) > ")),
+                float(input(
+                    "pourcentage de la hauteur, de la police du titre de l'album si il n'est pas trop grand (" + str(
+                        settings['default'].default_album_name_font_size_percentage) + " "
+                                                                                       "par défaut) > ")),
+                float(input(
+                    "pourcentage de la hauteur, de la police du (des) nom(s) de(s) (l')artiste(s) si il n'est pas "
+                    "trop grand (" + str(
+                        settings['default'].default_artist_name_font_size_percentage) + " par défaut) > ")),
+                float(input(
+                    "pourcentage de la hauteur, de la police des infos de l'album si elles ne sont pas trop "
+                    "grandes (" + str(
+                        settings['default'].default_album_infos_font_size_percentage) + " par défaut) > ")),
+                float(input(
+                    "multiplicateur de la résolution de l'image (1 donne une image de 1 000px de hauteurs, "
+                    "10 donne une image de 10 000px de hauteur), baisser pour augmenter la rapidité (" + str(
+                        settings['default'].resolution_multiplicator) + " par "
+                                                                        "défaut) > ")),
+                float(input("flou de l'ombre de la cover (6 par défaut) > ")),
+                float(input("pourcentage de la largeur, de l'ombre de la cover (1 par défaut) > ")),
+                (
+                    int(input(
+                        "valeur de 0 à 255 de la quantité de rouge dans la couleur de l'ombre (10 par défaut) > ")),
+                    int(input("valeur de 0 à 255 de la quantité de vert dans la couleur de l'ombre (10 par "
+                              "défaut) > ")),
+                    int(input("valeur de 0 à 255 de la quantité de bleu dans la couleur de l'ombre (10 par "
+                              "défaut) > ")),
+                ),
+                float(input("multiplicateur de la saturation de l'arrière plan (" + str(
+                    settings['default'].background_saturation) + " par défaut) > ")),
+                input("nom du nouveau profile (laisser vide pour ne pas sauvegarder) > ")
+            )
+            if setting.name != "":
+                newSetting(setting)
+        except ValueError:
+            print("\n\n        Mauvaise valeur entrée, utilisation du profile par défault. \n")
+            setting = settings["default"]
+
+        return setting
 
 
 def getAlbum(album_to_search):

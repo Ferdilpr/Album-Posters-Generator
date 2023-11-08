@@ -20,59 +20,7 @@ def Generator():
         if mode == "auto":
             setting = settings["default"]
         elif mode == "custom":
-            print()
-            for i in range(len(settings_list)):
-                print(str(i + 1) + ". " + settings_list[i].name)
-            try:
-                profile = int(input("Entrez le numéro du profil souhaité (aucun pour en créer un nouveau) > "))
-            except ValueError:
-                profile = None
-            if profile is not None and profile in range(1, len(settings_list) + 1):
-                setting = settings_list[profile - 1]
-            else:
-                profile = None
-            if profile is None:
-                print("\nMode de génération Personnalisé !\nEntrez les informations suivantes :")
-                try:
-                    setting = core.Setting(
-                        float(input("flou d'arrière plan (" + str(settings['default'].background_blur_radius) + " par défaut) > ")),
-                        float(input("rapport largeur/longueur en pourcentage (" + str(settings['default'].poster_width_percentage) + " par défaut pour du A3) > ")),
-                        float(input("pourcentage de la largeur consacré aux marges autour de la cover (" + str(settings['default'].center_image_padding_sides_percentage) + " par défaut) > ")),
-                        float(input("pourcentage de la largeur consacré à la marge au dessus de la cover (" + str(settings['default'].center_image_padding_top_percentage) + " par défaut) > ")),
-                        float(input(
-                            "assombrissement de l'arrière de 0 la couleur de base, à 1 l'arrière' toute noir (" + str(settings['default'].background_darkness) + " par "
-                            "défaut) > ")),
-                        float(input(
-                            "pourcentage de la hauteur, de la police du titre de l'album si il n'est pas trop grand (" + str(settings['default'].default_album_name_font_size_percentage) + " "
-                            "par défaut) > ")),
-                        float(input(
-                            "pourcentage de la hauteur, de la police du (des) nom(s) de(s) (l')artiste(s) si il n'est pas "
-                            "trop grand (" + str(settings['default'].default_artist_name_font_size_percentage) + " par défaut) > ")),
-                        float(input(
-                            "pourcentage de la hauteur, de la police des infos de l'album si elles ne sont pas trop "
-                            "grandes (" + str(settings['default'].default_album_infos_font_size_percentage) + " par défaut) > ")),
-                        float(input(
-                            "multiplicateur de la résolution de l'image (1 donne une image de 1 000px de hauteurs, "
-                            "10 donne une image de 10 000px de hauteur), baisser pour augmenter la rapidité (" + str(settings['default'].resolution_multiplicator) + " par "
-                            "défaut) > ")),
-                        float(input("flou de l'ombre de la cover (6 par défaut) > ")),
-                        float(input("pourcentage de la largeur, de l'ombre de la cover (1 par défaut) > ")),
-                        (
-                            int(input(
-                                "valeur de 0 à 255 de la quantité de rouge dans la couleur de l'ombre (10 par défaut) > ")),
-                            int(input("valeur de 0 à 255 de la quantité de vert dans la couleur de l'ombre (10 par "
-                                      "défaut) > ")),
-                            int(input("valeur de 0 à 255 de la quantité de bleu dans la couleur de l'ombre (10 par "
-                                      "défaut) > ")),
-                        ),
-                        float(input("multiplicateur de la saturation de l'arrière plan (" + str(settings['default'].background_saturation) + " par défaut) > ")),
-                        input("nom du nouveau profile (laisser vide pour ne pas sauvegarder) > ")
-                    )
-                    if setting.name != "":
-                        core.newSetting(setting)
-                except ValueError:
-                    print("\n\n        Mauvaise valeur entrée, utilisation du profile par défault. \n")
-                    setting = settings["default"]
+            setting = core.customSetting(settings, settings_list)
         else:
             break
 
