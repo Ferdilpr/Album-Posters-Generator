@@ -1,70 +1,78 @@
 import math
-
 from PIL import Image, ImageFilter, ImageDraw, ImageFont
-
 import core
-
-defaultSetting = core.Setting(
-    25,
-    70.143,
-    13,
-    11,
-    0.4,
-    3.1,
-    2.1,
-    1.4,
-    5,
-    10,
-    1,
-    (0, 0, 0),
-    1.75
-)
-
-storySetting = defaultSetting.copy(
-    poster_width_percentage=56.25,
-    center_image_padding_top_percentage=22,
-    default_album_name_font_size_percentage=3.5,
-    default_artist_name_font_size_percentage=2.5,
-    default_album_infos_font_size_percentage=1.8,
-    resolution_multiplicator=2
-)
 
 
 def Generator():
     while True:
+        settings_list = core.getSettings()
+        dict_scaffold = []
+        for setting_item in settings_list:
+            dict_scaffold.append([setting_item.name, setting_item])
+        settings = dict(dict_scaffold)
+
+        font = core.Fonts("Roboto")
+
         mode = ""
         while mode != "auto" and mode != "custom" and mode != "stop":
             print("Entrez le mode de génération ('auto' : automatique | 'custom' : personnalisé | 'stop' pour arrêter)")
             mode = input("[auto/custom/stop] > ")
         if mode == "auto":
-            setting = storySetting
+            setting = settings["default"]
         elif mode == "custom":
-            print("\n Mode de génération Personnalisé ! \n Entrez les informations suivantes :")
-            setting = core.Setting(
-                float(input("flou d'arrière plan (25 par défaut) > ")),
-                float(input("rapport largeur/longueur en pourcentage (70.7143 par défaut pour du A3) > ")),
-                float(input("pourcentage de la largeur consacré aux marges autour de la cover (13 par défaut) > ")),
-                float(input("pourcentage de la largeur consacré à la marge au dessus de la cover (11 par défaut) > ")),
-                float(input(
-                    "assombrissement de l'arrière de 0 la couleur de base, à 1 l'arrière' toute noir (0.4 par défaut) > ")),
-                float(input(
-                    "pourcentage de la hauteur, de la police du titre de l'album si il n'est pas trop grand (3.1 par défaut) > ")),
-                float(input(
-                    "pourcentage de la hauteur, de la police du (des) nom(s) de(s) (l')artiste(s) si il n'est pas trop grand (2.1 par défaut) > ")),
-                float(input(
-                    "pourcentage de la hauteur, de la police des infos de l'album si elles ne sont pas trop grandes (1.15 par défaut) > ")),
-                float(input(
-                    "multiplicateur de la résolution de l'image (1 donne une image de 1 000px de hauteurs, 10 donne une image de 10 000px de hauteur), baisser pour augmenter la rapidité (20 par défaut) > ")),
-                float(input("flou de l'ombre de la cover (6 par défaut) > ")),
-                float(input("pourcentage de la largeur, de l'ombre de la cover (1 par défaut) > ")),
-                (
-                    int(input(
-                        "valeur de 0 à 255 de la quantité de rouge dans la couleur de l'ombre (10 par défaut) >")),
-                    int(input("valeur de 0 à 255 de la quantité de vert dans la couleur de l'ombre (10 par défaut) >")),
-                    int(input("valeur de 0 à 255 de la quantité de bleu dans la couleur de l'ombre (10 par défaut) >")),
-                ),
-                float(input("multiplicateur de la saturation de l'arrière plan (1.5 par défaut) >"))
-            )
+            print()
+            for i in range(len(settings_list)):
+                print(str(i + 1) + ". " + settings_list[i].name)
+            try:
+                profile = int(input("Entrez le numéro du profil souhaité (aucun pour en créer un nouveau) > "))
+            except ValueError:
+                profile = None
+            if profile is not None and profile in range(1, len(settings_list) + 1):
+                setting = settings_list[profile - 1]
+            else:
+                profile = None
+            if profile is None:
+                print("\nMode de génération Personnalisé !\nEntrez les informations suivantes :")
+                try:
+                    setting = core.Setting(
+                        float(input("flou d'arrière plan (" + str(settings['default'].background_blur_radius) + " par défaut) > ")),
+                        float(input("rapport largeur/longueur en pourcentage (" + str(settings['default'].poster_width_percentage) + " par défaut pour du A3) > ")),
+                        float(input("pourcentage de la largeur consacré aux marges autour de la cover (" + str(settings['default'].center_image_padding_sides_percentage) + " par défaut) > ")),
+                        float(input("pourcentage de la largeur consacré à la marge au dessus de la cover (" + str(settings['default'].center_image_padding_top_percentage) + " par défaut) > ")),
+                        float(input(
+                            "assombrissement de l'arrière de 0 la couleur de base, à 1 l'arrière' toute noir (" + str(settings['default'].background_darkness) + " par "
+                            "défaut) > ")),
+                        float(input(
+                            "pourcentage de la hauteur, de la police du titre de l'album si il n'est pas trop grand (" + str(settings['default'].default_album_name_font_size_percentage) + " "
+                            "par défaut) > ")),
+                        float(input(
+                            "pourcentage de la hauteur, de la police du (des) nom(s) de(s) (l')artiste(s) si il n'est pas "
+                            "trop grand (" + str(settings['default'].default_artist_name_font_size_percentage) + " par défaut) > ")),
+                        float(input(
+                            "pourcentage de la hauteur, de la police des infos de l'album si elles ne sont pas trop "
+                            "grandes (" + str(settings['default'].default_album_infos_font_size_percentage) + " par défaut) > ")),
+                        float(input(
+                            "multiplicateur de la résolution de l'image (1 donne une image de 1 000px de hauteurs, "
+                            "10 donne une image de 10 000px de hauteur), baisser pour augmenter la rapidité (" + str(settings['default'].resolution_multiplicator) + " par "
+                            "défaut) > ")),
+                        float(input("flou de l'ombre de la cover (6 par défaut) > ")),
+                        float(input("pourcentage de la largeur, de l'ombre de la cover (1 par défaut) > ")),
+                        (
+                            int(input(
+                                "valeur de 0 à 255 de la quantité de rouge dans la couleur de l'ombre (10 par défaut) > ")),
+                            int(input("valeur de 0 à 255 de la quantité de vert dans la couleur de l'ombre (10 par "
+                                      "défaut) > ")),
+                            int(input("valeur de 0 à 255 de la quantité de bleu dans la couleur de l'ombre (10 par "
+                                      "défaut) > ")),
+                        ),
+                        float(input("multiplicateur de la saturation de l'arrière plan (" + str(settings['default'].background_saturation) + " par défaut) > ")),
+                        input("nom du nouveau profile (laisser vide pour ne pas sauvegarder) > ")
+                    )
+                    if setting.name != "":
+                        core.newSetting(setting)
+                except ValueError:
+                    print("\n\n        Mauvaise valeur entrée, utilisation du profile par défault. \n")
+                    setting = settings["default"]
         else:
             break
 
@@ -77,11 +85,14 @@ def Generator():
         tracks_second = ""
         longest_track = 0
         longest_second_track = 0
-        if album.tracks_count_raw <= 16:
+        if album.tracks_count_raw <= 10:
+            max_per_column = 5
+            default_text_font_size_percentage = 1.3 + 4 / min(album.tracks_count_raw, max_per_column)
+        elif album.tracks_count_raw <= 16:
             max_per_column = 8
-            default_text_font_size_percentage = 1.1 + 4 / min(album.tracks_count_raw, 8)
+            default_text_font_size_percentage = 1.2 + 4 / min(album.tracks_count_raw, max_per_column)
         else:
-            max_per_column = 11
+            max_per_column = 12
             default_text_font_size_percentage = 1.2
 
         cover = Image.open(album.cover_link).convert("RGB")
@@ -93,7 +104,7 @@ def Generator():
 
         text_font_size = default_text_font_size_percentage * poster_height / 100
         ImageDraw.ImageDraw.font = ImageFont.truetype(
-            "fonts/Poppins-Italic.ttf",
+            font.light.italic(),
             size=math.ceil(text_font_size))
 
         for i in range(0, min(album.tracks_count_raw, max_per_column)):
@@ -112,7 +123,7 @@ def Generator():
 
         album_infos_font_size = setting.default_album_infos_font_size_percentage * poster_height / 100
         album_infos_font = ImageFont.truetype(
-            "fonts/Poppins-Light.ttf",
+            font.medium,
             size=math.ceil(album_infos_font_size))
 
         if len(album.album_name) > 10:
@@ -121,7 +132,7 @@ def Generator():
         else:
             album_name_font_size = setting.default_album_name_font_size_percentage * poster_height / 100
         album_name_font = ImageFont.truetype(
-            "fonts/Poppins-ExtraBold.ttf",
+            font.black,
             size=math.ceil(album_name_font_size))
 
         if len(album.artist_name) > 15:
@@ -131,7 +142,7 @@ def Generator():
             artist_name_font_size = setting.default_artist_name_font_size_percentage * poster_height / 100 - (
                     len(album.album_name) - 10) * 0.15
         artist_name_font = ImageFont.truetype(
-            "fonts/Poppins-Regular.ttf",
+            font.regular,
             size=math.ceil(artist_name_font_size))
 
         center_image_padding_sides = math.ceil(poster_width * setting.center_image_padding_sides_percentage / 100)

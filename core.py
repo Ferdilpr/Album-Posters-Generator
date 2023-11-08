@@ -1,18 +1,39 @@
 import math
-import string
-
 import requests
 import shutil
 from datetime import datetime
-from PIL import Image, ImageFilter, ImageDraw, ImageFont, ImageEnhance
+from PIL import Image, ImageFilter, ImageEnhance
+import json
 
 DOMAIN = "https://api.deezer.com/"
 search_domain = DOMAIN + "search/album"
 album_domain = DOMAIN + "album/"
 track_domain = DOMAIN + "track/"
 
+fonts_directory = "fonts/"
 
-class Setting:
+
+class Fonts:
+    def __init__(self, name):
+        self.directory = fonts_directory + name + "/"
+        self.black = Font(self.directory + name + "-Black.ttf")
+        self.extra_bold = Font(self.directory + name + "-ExtraBold.ttf")
+        self.bold = Font(self.directory + name + "-Bold.ttf")
+        self.semi_bold = Font(self.directory + name + "-SemiBold.ttf")
+        self.medium = Font(self.directory + name + "-Medium.ttf")
+        self.regular = Font(self.directory + name + "-Regular.ttf")
+        self.light = Font(self.directory + name + "-Light.ttf")
+        self.extra_light = Font(self.directory + name + "-ExtraLight.ttf")
+        self.thin = Font(self.directory + name + "-Thin.ttf")
+        self.italic = self.directory + name + "-Italic.ttf"
+
+
+class Font(str):
+    def italic(self):
+        return self.removesuffix(".ttf") + "Italic.ttf"
+
+
+class Setting(object):
     def __init__(
             self,
             background_blur_radius,
@@ -27,9 +48,11 @@ class Setting:
             center_image_shadow_blur,
             center_image_shadow_size_percentage,
             center_image_shadow_color,
-            background_saturation
+            background_saturation,
+            name=""
 
     ):
+        self.name = name
         self.background_blur_radius = background_blur_radius
         self.poster_width_percentage = poster_width_percentage
         self.center_image_padding_sides_percentage = center_image_padding_sides_percentage
@@ -57,9 +80,25 @@ class Setting:
              center_image_shadow_blur=None,
              center_image_shadow_size_percentage=None,
              center_image_shadow_color=None,
-             background_saturation=None
+             background_saturation=None,
+             name="",
              ):
-        copy = self
+        copy = Setting(
+            self.background_blur_radius,
+            self.poster_width_percentage,
+            self.center_image_padding_sides_percentage,
+            self.center_image_padding_top_percentage,
+            self.background_darkness,
+            self.default_album_name_font_size_percentage,
+            self.default_artist_name_font_size_percentage,
+            self.default_album_infos_font_size_percentage,
+            self.resolution_multiplicator,
+            self.center_image_shadow_blur,
+            self.center_image_shadow_size_percentage,
+            self.center_image_shadow_color,
+            self.background_saturation,
+            self.name
+        )
 
         if background_blur_radius is not None:
             copy.background_blur_radius = background_blur_radius
@@ -87,8 +126,13 @@ class Setting:
             copy.center_image_shadow_color = center_image_shadow_color
         if background_saturation is not None:
             copy.background_saturation = background_saturation
+        copy.name = name
 
         return copy
+
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__,
+                          sort_keys=True, indent=4)
 
 
 class Album:
@@ -106,6 +150,52 @@ class Album:
         self.tracks = _tracks
         self.artist_name = _artist_name
         self.label = _label
+
+
+def getSettings():
+    settings_file = open("settings.json", "r")
+    settings_json = json.load(settings_file)
+    settings_file.close()
+    return jsonToSettings(settings_json)
+
+
+def jsonToSettings(settings_json):
+    settings = []
+    for setting_json in settings_json:
+        settings.append(Setting(
+            setting_json["background_blur_radius"],
+            setting_json["poster_width_percentage"],
+            setting_json["center_image_padding_sides_percentage"],
+            setting_json["center_image_padding_top_percentage"],
+            setting_json["background_darkness"],
+            setting_json["default_album_name_font_size_percentage"],
+            setting_json["default_artist_name_font_size_percentage"],
+            setting_json["default_album_infos_font_size_percentage"],
+            setting_json["resolution_multiplicator"],
+            setting_json["center_image_shadow_blur"],
+            setting_json["center_image_shadow_size_percentage"],
+            (
+                setting_json["center_image_shadow_color"][0],
+                setting_json["center_image_shadow_color"][1],
+                setting_json["center_image_shadow_color"][2]
+            ),
+            setting_json["background_saturation"],
+            setting_json["name"]
+        ))
+    return settings
+
+
+def newSetting(new_setting):
+    settings = getSettings()
+    if new_setting not in settings:
+        settings.append(new_setting)
+    settings_json = "["
+    for setting in settings:
+        settings_json += json.dumps(setting.__dict__) + ", "
+    settings_json.removesuffix(", ")
+    settings_json += "]"
+    settings_file = open("settings.json", "w")
+    settings_file.write(settings_json)
 
 
 def getAlbum(album_to_search):
