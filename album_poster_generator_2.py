@@ -1,7 +1,8 @@
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 import core
 import math
 
+# TODO: Second poster generator algorythme
 
 poster_width_percentage = 68
 resolution_multiplicator = 1

@@ -26,6 +26,10 @@ def Generator():
 
         print("\nEntrez le nom d'un album :")
         album_to_search = input("> ")
+        classement = None
+        if " **" in album_to_search:
+            classement = int(album_to_search.split(" **")[1])
+            album_to_search = album_to_search.split(" **")[0]
 
         album = core.getAlbum(album_to_search)
 
@@ -34,20 +38,26 @@ def Generator():
         longest_track = 0
         longest_second_track = 0
         if album.tracks_count_raw <= 10:
-            max_per_column = 5
-            default_text_font_size_percentage = 1.3 + 4 / min(album.tracks_count_raw, max_per_column)
+            max_per_column = 6
+            default_text_font_size_percentage = 1.25 + 4 / min(album.tracks_count_raw, max_per_column)
         elif album.tracks_count_raw <= 16:
             max_per_column = 8
             default_text_font_size_percentage = 1.2 + 4 / min(album.tracks_count_raw, max_per_column)
-        else:
+        elif album.tracks_count_raw <= 24:
             max_per_column = 12
             default_text_font_size_percentage = 1.2
+        else:
+            max_per_column = 15
+            default_text_font_size_percentage = 1
 
         cover = Image.open(album.cover_link).convert("RGB")
 
         poster = core.blurred_backround(cover, setting.background_blur_radius, setting.poster_width_percentage,
                                         setting.background_darkness, setting.resolution_multiplicator,
                                         setting.background_saturation)
+        # poster = core.gradiant_background(cover, 80, setting.poster_width_percentage,
+        # resolution_multiplicator=setting.resolution_multiplicator)
+
         (poster_width, poster_height) = poster.size
 
         text_font_size = default_text_font_size_percentage * poster_height / 100
@@ -139,6 +149,9 @@ def Generator():
         top_offset = center_image_padding_top + center_image_size + poster_height * 0.05
         draw.multiline_text((poster_width - center_image_padding_sides, top_offset), album_infos, align="right",
                             anchor="rm", font=album_infos_font)
+
+        if classement is not None:
+            poster = core.classement(poster, classement, setting.resolution_multiplicator, font)
 
         target_file_name = "results/" + "Poster " + album.album_name + " - " + album.artist_name + ".png"
         poster.save(target_file_name)

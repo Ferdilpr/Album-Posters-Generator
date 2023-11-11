@@ -1,9 +1,18 @@
+from __future__ import print_function
+
 import math
 import requests
 import shutil
 from datetime import datetime
-from PIL import Image, ImageFilter, ImageEnhance
+from PIL import Image, ImageFilter, ImageEnhance, ImageDraw, ImageFont
 import json
+from random import randrange
+import numpy as np
+import scipy
+import scipy.misc
+import scipy.cluster
+import binascii
+import struct
 
 DOMAIN = "https://api.deezer.com/"
 search_domain = DOMAIN + "search/album"
@@ -244,12 +253,12 @@ def customSetting(settings, settings_list):
                 float(input("flou de l'ombre de la cover (6 par défaut) > ")),
                 float(input("pourcentage de la largeur, de l'ombre de la cover (1 par défaut) > ")),
                 (
-                    int(input(
+                    print(input(
                         "valeur de 0 à 255 de la quantité de rouge dans la couleur de l'ombre (10 par défaut) > ")),
-                    int(input("valeur de 0 à 255 de la quantité de vert dans la couleur de l'ombre (10 par "
-                              "défaut) > ")),
-                    int(input("valeur de 0 à 255 de la quantité de bleu dans la couleur de l'ombre (10 par "
-                              "défaut) > ")),
+                    print(input("valeur de 0 à 255 de la quantité de vert dans la couleur de l'ombre (10 par "
+                                "défaut) > ")),
+                    print(input("valeur de 0 à 255 de la quantité de bleu dans la couleur de l'ombre (10 par "
+                                "défaut) > ")),
                 ),
                 float(input("multiplicateur de la saturation de l'arrière plan (" + str(
                     settings['default'].background_saturation) + " par défaut) > ")),
@@ -261,7 +270,7 @@ def customSetting(settings, settings_list):
             print("\n\n        Mauvaise valeur entrée, utilisation du profile par défault. \n")
             setting = settings["default"]
 
-        return setting
+    return setting
 
 
 def getAlbum(album_to_search):
@@ -287,7 +296,7 @@ def getAlbum(album_to_search):
     release_date_raw = response["release_date"]
     release_date = datetime.strptime(release_date_raw, "%Y-%m-%d").strftime('%d/%m/%Y')
 
-    tracks_count_raw = int(response["nb_tracks"])
+    tracks_count_raw = math.ceil(response["nb_tracks"])
     tracks_count = str(tracks_count_raw) + " titres"
     if tracks_count_raw > 22:
         RuntimeError("The album contains too much tracks")
@@ -339,7 +348,7 @@ def getAlbum(album_to_search):
     return album
 
 
-def blurred_backround(cover, blur_radius=25, width_ratio=70.7143, darkness=0.4,
+def blurred_backround(cover, blur_radius=25, width_ratio=70.147, darkness=0.4,
                       resolution_multiplicator=1, saturation=1.75):
     cover = cover.resize(
         (math.ceil(cover.size[0] * resolution_multiplicator), math.ceil(cover.size[1] * resolution_multiplicator)))
@@ -355,5 +364,53 @@ def blurred_backround(cover, blur_radius=25, width_ratio=70.7143, darkness=0.4,
     poster = ImageEnhance.Color(poster).enhance(saturation)
     black_background_profile = Image.new("RGB", poster.size, (0, 0, 0))
     poster = Image.blend(poster, black_background_profile, darkness)
+
+    return poster
+
+
+def gradiant_background(cover, blend, width_ratio, darkness=0,
+                        resolution_multiplicator=1, saturation=1.75):
+    resolution = math.ceil(100 / blend)
+    pattern = cover.resize((resolution, resolution))
+    pixels = []
+    for x in range(resolution):
+        for y in range(resolution):
+            pixels.append(pattern.getpixel((x, y)))
+    pixel1 = pixels[randrange(0, resolution * resolution)]
+    pixel2 = pixel1
+    while pixel2 == pixel1:
+        pixel2 = pixels[randrange(0, resolution * resolution)]
+    height = math.ceil(cover.height * resolution_multiplicator)
+    width = math.ceil(height * width_ratio / 100)
+    return gradiant(pixel1, pixel2, width, height)
+def gradiant(color1, color2, width, height):
+    im = Image.new("RGB", (width, height), (0, 0, 0))
+    for x in range(width):
+        vertical = x / width
+        for y in range(height):
+            horizontal = y / height
+            top_right = ((1 - horizontal) + vertical) / 2
+            bottom_left = (horizontal + (1 - vertical)) / 2
+            red = math.ceil((color1[0] * top_right) + (color2[0] * bottom_left))
+            green = math.ceil((color1[1] * top_right) + (color2[1] * bottom_left))
+            blue = math.ceil((color1[2] * top_right) + (color2[2] * bottom_left))
+            im.putpixel((x, y), (red, green, blue))
+    return im
+
+
+def classement(poster, grade, resolution_multiplicator, font_family):
+    draw = ImageDraw.Draw(poster)
+    if grade == 1:
+        color = (204, 136, 0)
+    elif grade == 2:
+        color = (97, 97, 97)
+    elif grade == 3:
+        color = (107, 51, 2)
+    else:
+        color = (0, 0, 0)
+    draw.ellipse((30 * resolution_multiplicator, 30 * resolution_multiplicator) + (110 * resolution_multiplicator, 110 * resolution_multiplicator), fill=color, outline=(255, 255, 255), width=2 * resolution_multiplicator)
+    font = ImageFont.truetype(font_family.black, 45*resolution_multiplicator)
+    text_size = draw.textlength(text=str(grade), font=font) / 2
+    draw.text((70*resolution_multiplicator - text_size, 46*resolution_multiplicator), str(grade), font=font)
 
     return poster

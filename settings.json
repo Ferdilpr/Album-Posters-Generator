@@ -11,7 +11,7 @@
     "default_album_infos_font_size_percentage": 1.5,
     "resolution_multiplicator": 5,
     "center_image_shadow_blur": 10,
-    "center_image_shadow_size_percentage": 1,
+    "center_image_shadow_size_percentage": 1.5,
     "center_image_shadow_color": [
       0,
       0,
