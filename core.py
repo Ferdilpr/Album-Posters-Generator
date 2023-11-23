@@ -1,162 +1,30 @@
 from __future__ import print_function
-
 import math
+
+import PIL
 import requests
 import shutil
 from datetime import datetime
 from PIL import Image, ImageFilter, ImageEnhance, ImageDraw, ImageFont
 import json
 from random import randrange
-import numpy as np
-import scipy
-import scipy.misc
-import scipy.cluster
-import binascii
-import struct
+
+import genius_api
+import google_photo_api
+from classes import Font, Fonts, Album, Track, fonts_directory, Setting
 
 DOMAIN = "https://api.deezer.com/"
-search_domain = DOMAIN + "search/album"
+album_search_domain = DOMAIN + "search/album"
+track_search_domain = DOMAIN + "search/track"
 album_domain = DOMAIN + "album/"
 track_domain = DOMAIN + "track/"
 
-fonts_directory = "fonts/"
+results_directory = "results/"
 
+google_photo_api.result_directory = results_directory
 
-class Fonts:
-    def __init__(self, name):
-        self.directory = fonts_directory + name + "/"
-        self.black = Font(self.directory + name + "-Black.ttf")
-        self.extra_bold = Font(self.directory + name + "-ExtraBold.ttf")
-        self.bold = Font(self.directory + name + "-Bold.ttf")
-        self.semi_bold = Font(self.directory + name + "-SemiBold.ttf")
-        self.medium = Font(self.directory + name + "-Medium.ttf")
-        self.regular = Font(self.directory + name + "-Regular.ttf")
-        self.light = Font(self.directory + name + "-Light.ttf")
-        self.extra_light = Font(self.directory + name + "-ExtraLight.ttf")
-        self.thin = Font(self.directory + name + "-Thin.ttf")
-        self.italic = self.directory + name + "-Italic.ttf"
-
-
-class Font(str):
-    def italic(self):
-        return self.removesuffix(".ttf") + "Italic.ttf"
-
-
-class Setting(object):
-    def __init__(
-            self,
-            background_blur_radius,
-            poster_width_percentage,
-            center_image_padding_sides_percentage,
-            center_image_padding_top_percentage,
-            background_darkness,
-            default_album_name_font_size_percentage,
-            default_artist_name_font_size_percentage,
-            default_album_infos_font_size_percentage,
-            resolution_multiplicator,
-            center_image_shadow_blur,
-            center_image_shadow_size_percentage,
-            center_image_shadow_color,
-            background_saturation,
-            name=""
-
-    ):
-        self.name = name
-        self.background_blur_radius = background_blur_radius
-        self.poster_width_percentage = poster_width_percentage
-        self.center_image_padding_sides_percentage = center_image_padding_sides_percentage
-        self.center_image_padding_top_percentage = center_image_padding_top_percentage
-        self.background_darkness = background_darkness
-        self.default_album_name_font_size_percentage = default_album_name_font_size_percentage
-        self.default_artist_name_font_size_percentage = default_artist_name_font_size_percentage
-        self.default_album_infos_font_size_percentage = default_album_infos_font_size_percentage
-        self.resolution_multiplicator = resolution_multiplicator
-        self.center_image_shadow_blur = center_image_shadow_blur
-        self.center_image_shadow_size_percentage = center_image_shadow_size_percentage
-        self.center_image_shadow_color = center_image_shadow_color
-        self.background_saturation = background_saturation
-
-    def copy(self,
-             background_blur_radius=None,
-             poster_width_percentage=None,
-             center_image_padding_sides_percentage=None,
-             center_image_padding_top_percentage=None,
-             background_darkness=None,
-             default_album_name_font_size_percentage=None,
-             default_artist_name_font_size_percentage=None,
-             default_album_infos_font_size_percentage=None,
-             resolution_multiplicator=None,
-             center_image_shadow_blur=None,
-             center_image_shadow_size_percentage=None,
-             center_image_shadow_color=None,
-             background_saturation=None,
-             name="",
-             ):
-        copy = Setting(
-            self.background_blur_radius,
-            self.poster_width_percentage,
-            self.center_image_padding_sides_percentage,
-            self.center_image_padding_top_percentage,
-            self.background_darkness,
-            self.default_album_name_font_size_percentage,
-            self.default_artist_name_font_size_percentage,
-            self.default_album_infos_font_size_percentage,
-            self.resolution_multiplicator,
-            self.center_image_shadow_blur,
-            self.center_image_shadow_size_percentage,
-            self.center_image_shadow_color,
-            self.background_saturation,
-            self.name
-        )
-
-        if background_blur_radius is not None:
-            copy.background_blur_radius = background_blur_radius
-        if poster_width_percentage is not None:
-            copy.poster_width_percentage = poster_width_percentage
-        if center_image_padding_sides_percentage is not None:
-            copy.center_image_padding_sides_percentage = center_image_padding_sides_percentage
-        if center_image_padding_top_percentage is not None:
-            copy.center_image_padding_top_percentage = center_image_padding_top_percentage
-        if background_darkness is not None:
-            copy.background_darkness = background_darkness
-        if default_album_name_font_size_percentage is not None:
-            copy.default_album_name_font_size_percentage = default_album_name_font_size_percentage
-        if default_artist_name_font_size_percentage is not None:
-            copy.default_artist_name_font_size_percentage = default_artist_name_font_size_percentage
-        if default_album_infos_font_size_percentage is not None:
-            copy.default_album_infos_font_size_percentage = default_album_infos_font_size_percentage
-        if resolution_multiplicator is not None:
-            copy.resolution_multiplicator = resolution_multiplicator
-        if center_image_shadow_blur is not None:
-            copy.center_image_shadow_blur = center_image_shadow_blur
-        if center_image_shadow_size_percentage is not None:
-            copy.center_image_shadow_size_percentage = center_image_shadow_size_percentage
-        if center_image_shadow_color is not None:
-            copy.center_image_shadow_color = center_image_shadow_color
-        if background_saturation is not None:
-            copy.background_saturation = background_saturation
-        copy.name = name
-
-        return copy
-
-
-class Album:
-
-    def __init__(self, _album_name="", _release_date="", _tracks_count_raw=0,
-                 _tracks_count="", _duration_raw="", _duration="", _cover_link="",
-                 _tracks=None, _artist_name="", _label=""):
-        if _tracks is None:
-            _tracks = []
-        self.album_name = _album_name
-        self.release_date = _release_date
-        self.tracks_count_raw = _tracks_count_raw
-        self.tracks_count = _tracks_count
-        self.duration_raw = _duration_raw
-        self.duration = _duration
-        self.cover_link = _cover_link
-        self.tracks = _tracks
-        self.artist_name = _artist_name
-        self.label = _label
+absolute_directory = ""
+download_directory = absolute_directory + "downloaded_covers/"
 
 
 def getSettings():
@@ -274,12 +142,9 @@ def customSetting(settings, settings_list):
 
 
 def getAlbum(album_to_search):
-    absolute_directory = ""
-    download_directory = absolute_directory + "downloaded_covers/"
-
     PARAMS = {"q": album_to_search}
 
-    response_raw = requests.get(url=search_domain, params=PARAMS)
+    response_raw = requests.get(url=album_search_domain, params=PARAMS)
     response = response_raw.json()
     result_id = str(response["data"][0]["id"])
 
@@ -348,8 +213,74 @@ def getAlbum(album_to_search):
     return album
 
 
-def blurred_backround(cover, blur_radius=25, width_ratio=70.147, darkness=0.4,
-                      resolution_multiplicator=1, saturation=1.75):
+def getTrack(track_to_search):
+    PARAMS = {"q": track_to_search}
+
+    response_raw = requests.get(url=track_search_domain, params=PARAMS)
+    response = response_raw.json()
+    result_id = str(response["data"][0]["id"])
+
+    response_raw = requests.get(url=track_domain + result_id)
+    response = response_raw.json()
+
+    title = response["title"]
+    formatted_title = str(title.rsplit(" (feat")[0])
+    formatted_title = str(formatted_title.rsplit(" (Extrait")[0])
+    if len(response["contributors"]) > 1:
+        formatted_title = formatted_title + " (feat."
+        contributors = []
+        for i in range(1, len(response["contributors"])):
+            if response["contributors"][i]["name"] != response["artist"]["name"] and \
+                    response["contributors"][i]["name"] not in contributors:
+                contributors.append(response["contributors"][i]["name"])
+        for contributor in contributors:
+            formatted_title = formatted_title + " " + contributor + ","
+        formatted_title = formatted_title.removesuffix(",")
+        formatted_title = formatted_title + ")"
+    title = formatted_title
+
+    duration_raw = response["duration"]
+    minutes = math.floor(duration_raw / 60)
+    seconds = duration_raw - minutes * 60
+    if seconds >= 10:
+        seconds_formated = str(seconds)
+    else:
+        seconds_formated = "0" + str(seconds)
+    duration = str(minutes) + ":" + seconds_formated
+    explicit_lyrics = response["explicit_lyrics"]
+    artist_name = response["artist"]["name"]
+
+    album_id = response["album"]["id"]
+    album_response = requests.get(album_domain + str(album_id)).json()
+    if album_response["nb_tracks"] > 1:
+        album_name = album_response["title"]
+    else:
+        album_name = None
+
+    if response["album"]["cover_xl"] is not None:
+        file_name = album_response["title"] + " - " + artist_name + ".jpg"
+        image_response = requests.get(response["album"]["cover_xl"], stream=True)
+        with open(download_directory + file_name, "wb") as f:
+            shutil.copyfileobj(image_response.raw, f)
+    else:
+        file_name = input(
+            "\n Aucune cover n'est renseignée pour l'instant, téléchargez-en une dans le répertoire " + download_directory + " puis entrez le nom du fichier. \n > ")
+    cover_link = download_directory + file_name
+
+    return Track(
+        title,
+        duration_raw,
+        duration,
+        explicit_lyrics,
+        artist_name,
+        album_name,
+        file_name,
+        cover_link
+    )
+
+
+def blurred_backround(cover, blur_radius=25, width_ratio=70.147, darkness=0,
+                      resolution_multiplicator=1, saturation=1, luminosity=0):
     cover = cover.resize(
         (math.ceil(cover.size[0] * resolution_multiplicator), math.ceil(cover.size[1] * resolution_multiplicator)))
 
@@ -362,8 +293,10 @@ def blurred_backround(cover, blur_radius=25, width_ratio=70.147, darkness=0.4,
     poster = cover.filter(ImageFilter.GaussianBlur(blur_radius * resolution_multiplicator))
     poster = poster.crop((math.ceil(left), upper, math.ceil(right), lower))
     poster = ImageEnhance.Color(poster).enhance(saturation)
-    black_background_profile = Image.new("RGB", poster.size, (0, 0, 0))
+    black_background_profile = Image.new("L", poster.size, 0).convert("RGB")
     poster = Image.blend(poster, black_background_profile, darkness)
+    white_background_profile = Image.new("L", poster.size, 255).convert("RGB")
+    poster = Image.blend(poster, white_background_profile, luminosity)
 
     return poster
 
@@ -383,6 +316,8 @@ def gradiant_background(cover, blend, width_ratio, darkness=0,
     height = math.ceil(cover.height * resolution_multiplicator)
     width = math.ceil(height * width_ratio / 100)
     return gradiant(pixel1, pixel2, width, height)
+
+
 def gradiant(color1, color2, width, height):
     im = Image.new("RGB", (width, height), (0, 0, 0))
     for x in range(width):
@@ -408,9 +343,102 @@ def classement(poster, grade, resolution_multiplicator, font_family):
         color = (107, 51, 2)
     else:
         color = (0, 0, 0)
-    draw.ellipse((30 * resolution_multiplicator, 30 * resolution_multiplicator) + (110 * resolution_multiplicator, 110 * resolution_multiplicator), fill=color, outline=(255, 255, 255), width=2 * resolution_multiplicator)
-    font = ImageFont.truetype(font_family.black, 45*resolution_multiplicator)
+    draw.ellipse((30 * resolution_multiplicator, 30 * resolution_multiplicator) + (
+        110 * resolution_multiplicator, 110 * resolution_multiplicator), fill=color, outline=(255, 255, 255),
+                 width=2 * resolution_multiplicator)
+    font = ImageFont.truetype(font_family.black, 45 * resolution_multiplicator)
     text_size = draw.textlength(text=str(grade), font=font) / 2
-    draw.text((70*resolution_multiplicator - text_size, 46*resolution_multiplicator), str(grade), font=font)
+    draw.text((70 * resolution_multiplicator - text_size, 46 * resolution_multiplicator), str(grade), font=font)
 
     return poster
+
+
+def rounded_corner_rectangle(image1: Image, image2: Image, xy, radius, opacity=1):
+    xy = (math.ceil(xy[0]), math.ceil(xy[1]))
+    mask = Image.new("L", image1.size, 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle(xy + (xy[0] + image2.width, xy[1] + image2.height), radius, math.ceil(255 * opacity))
+    to_paste = image1.copy()
+    to_paste.paste(image2, xy)
+    return Image.composite(to_paste, image1, mask)
+
+
+def square_shadow(background: Image, xy, resolution_multiplicator=1, blur=10, color=(0, 0, 0)):
+    center_image_shadow_background = Image.new("RGB", background.size, color)
+    center_image_shadow_mask = Image.new("L", background.size, 0)
+    center_image_shadow_mask_cutout = ImageDraw.Draw(center_image_shadow_mask)
+    center_image_shadow_mask_cutout.rectangle(xy, fill=255)
+    center_image_shadow_mask = center_image_shadow_mask.filter(
+        ImageFilter.GaussianBlur(blur * resolution_multiplicator))
+    return Image.composite(center_image_shadow_background, background, center_image_shadow_mask)
+
+
+def flip_image(image: Image):
+    pixels = []
+    for x in range(image.width):
+        for y in range(image.height):
+            pixels.append(image.getpixel((x, y)))
+    result = Image.new("RGB", image.size, (0, 0, 0))
+    i = 0
+    for x in range(image.width):
+        for y in range(image.height):
+            i += 1
+            result.putpixel((x, y), pixels[len(pixels) - i])
+    return result
+
+
+def rounded_corner_triangle(image1: Image, image2: Image, xy, radius, opacity=1):
+    xy = (math.ceil(xy[0]), math.ceil(xy[1]))
+    mask = Image.new("L", image1.size, 0)
+    draw = ImageDraw.Draw(mask)
+
+    draw.line((xy[0] + radius, xy[1] + image2.height / 2 - radius) + (xy[0] + image2.width - radius * 2, xy[1] + radius), 255 * opacity)
+    draw.line((xy[0] + radius, xy[1] + image2.height / 2 + radius) + (xy[0] + image2.width - radius * 2, xy[1] + image2.height - radius), 255 * opacity)
+    draw.line((xy[0] + image2.width, xy[1] + radius) + (xy[0] + image2.width, xy[1] + image2.height - radius), 255 * opacity)
+    draw.arc((xy[0], xy[1] + image2.height / 2 - radius) + (xy[0] + radius, xy[1] + image2.height / 2 + radius), 90,
+             -90, 255 * opacity)
+    draw.arc((xy[0] + image2.width - radius * 2, xy[1]) + (xy[0] + image2.width, xy[1] + radius), 150,
+             30, 255 * opacity)
+    return mask
+
+    to_paste = image1.copy()
+    to_paste.paste(image2, xy)
+    return Image.composite(to_paste, image1, mask)
+
+
+def map_range(x, min_source, max_source, min_destination, max_destination):
+    # Vérification pour éviter une division par zéro
+    if min_source == max_source:
+        raise ValueError("min_source et max_source ne peuvent pas être égaux.")
+
+    # Calcul de la valeur transformée
+    y = ((x - min_source) / (max_source - min_source)) * (max_destination - min_destination) + min_destination
+    return y
+
+
+def round_corner_profile(radius, angle, rotation):
+    angle = math.radians(angle)
+    rotation = math.radians(rotation)
+    center_to_corner = radius / math.cos(angle)
+    width = abs(math.sin(angle))
+
+
+def invert_image(source: Image):
+    image = source.copy()
+    for x in range(image.width):
+        for y in range(image.height):
+            pixel = image.getpixel((x, y))
+            r = 255 - pixel[0]
+            g = 255 - pixel[1]
+            b = 255 - pixel[2]
+            image.putpixel((x, y), (r, g, b))
+    return image
+
+
+def luminosity_mask(source: PIL.Image, resolution_multiplicator=1):
+    image = source.copy().resize((3, 4)).convert("L")
+    image = invert_image(image.convert("RGB")).convert("L")
+    if image.getpixel((1, 2)) > 130:
+        return Image.new("RGB", source.size, (255, 255, 255))
+    else:
+        return Image.new("RGB", source.size, (0, 0, 0))
