@@ -23,7 +23,7 @@ results_directory = "results/"
 
 google_photo_api.result_directory = results_directory
 
-absolute_directory = ""
+absolute_directory = "C:/Users/ferdinandleprince/PycharmProjects/pythonProject/"
 download_directory = absolute_directory + "downloaded_covers/"
 
 
@@ -193,7 +193,7 @@ def getAlbum(album_to_search):
         track_response_raw = requests.get(track_domain + str(track["id"]))
         track_response = track_response_raw.json()
         if len(track_response["contributors"]) > len(response["contributors"]):
-            formatted_title = formatted_title + " (&"
+            formatted_title = formatted_title + " (ft."
             contributors = []
             for i in range(len(response["contributors"]), len(track_response["contributors"])):
                 if track_response["contributors"][i]["name"] != response["artist"]["name"] and \
@@ -277,6 +277,83 @@ def getTrack(track_to_search):
         file_name,
         cover_link
     )
+
+
+def lyrics_picker(title: str, artist_name: str = ""):
+    lyrics = genius_api.get_lyrics(title, artist_name)
+    for i in range(len(lyrics)):
+        if "(" in lyrics[i]:
+            lyrics[i] = lyrics[i].rsplit("(")[0]
+        try:
+            if lyrics[i][0] == "[" and lyrics[i][1] != "?":
+                if lyrics[i].removeprefix("[").rsplit(" ")[0] == "Partie":
+                    print("\n--- " + lyrics[i].removeprefix("[").removesuffix("]") + " ---\n")
+                else:
+                    print("\n- " + lyrics[i].removeprefix("[").removesuffix("]") + " -\n")
+            else:
+                print(str(i) + ". " + lyrics[i])
+        except IndexError:
+            print(str(i) + ". " + lyrics[i])
+    lines = input("\nEntrez les lignes de paroles que vous voulez insérer séparés de ':' > ")
+    lines = lines.rsplit(":")
+    result = ""
+    try:
+        try:
+            for i in range(int(lines[0]), int(lines[1]) + 1):
+                result += lyrics[i] + "\n"
+            result.removesuffix("\n")
+            return result
+        except IndexError:
+            return lyrics[int(lines[0])]
+    except ValueError:
+        return ""
+
+
+def format_too_long(text, draw: ImageDraw.ImageDraw, font: ImageFont.FreeTypeFont,
+                    max_width, max_heigth=None, wrap=False):
+    formatted_title = text
+    while formatted_title[-1] == " ":
+        formatted_title = formatted_title.removesuffix(" ")
+    if wrap:
+        while draw.multiline_textbbox((0, 0), formatted_title, font)[2] > max_width:
+            segment = formatted_title
+            if "\n" in formatted_title:
+                segment = formatted_title.rsplit("\n")[-1]
+            segment = segment.removeprefix("\n")
+            floor = len(segment) - 1
+            segment_result = segment
+            while draw.multiline_textbbox((0, 0), segment_result.rsplit("\n")[0], font)[2] > max_width:
+                space_pos = 0
+                for i in range(floor, 0, -1):
+                    if segment[i] == " ":
+                        space_pos = i
+                        break
+                segment_result = ""
+                for i in range(len(segment)):
+                    if i == space_pos:
+                        segment_result += "\n"
+                    else:
+                        segment_result += segment[i]
+                floor -= 1
+                if floor < 1:
+                    break
+            formatted_title = formatted_title.removesuffix("\n").removesuffix(segment) + "\n" + segment_result
+        while '\n\n' in formatted_title:
+            formatted_title = formatted_title.replace("\n\n", "\n")
+        return formatted_title
+    else:
+        font = font
+        while draw.multiline_textbbox((0, 0), formatted_title, font)[2] > max_width:
+            font = ImageFont.truetype(font.path, font.size - 1)
+        return font
+
+
+def background_color(background: Image.Image, xy, threshold=128):
+    cropped = background.copy().crop(xy)
+    pixel = cropped.resize((1, 1)).getpixel((0, 0))
+    absolute = (pixel[0] + pixel[1] + pixel[2]) / 3
+    color = (absolute < threshold) * 255
+    return color, color, color
 
 
 def blurred_backround(cover, blur_radius=25, width_ratio=70.147, darkness=0,

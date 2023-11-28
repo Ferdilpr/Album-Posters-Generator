@@ -2,10 +2,11 @@ import math
 import random
 
 import core
-from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance
+from PIL import Image, ImageDraw, ImageFont
+import pyexiv2
 
 # Parameters
-resolution_multiplicator = 1
+resolution_multiplicator = 10
 width_ratio = 56.25
 overlay_width_percentage = 80
 overlay_height_percentage = 67
@@ -19,7 +20,14 @@ font = core.Fonts("Roboto")
 overlay_outline_width = overlay_outline_width * resolution_multiplicator
 
 
-def progress_bar(background, duration_raw, progress_percentage, color, xy, time_font, resolution_multiplicator, width):
+def progress_bar(background: Image.Image,
+                 duration_raw: int,
+                 progress_percentage: int,
+                 color: tuple[int, int, int],
+                 xy,
+                 time_font: ImageFont.FreeTypeFont,
+                 resolution_multiplicator: float,
+                 width):
     duration = format_time(duration_raw)
     avancement_raw = math.ceil(duration_raw * progress_percentage / 100)
     avancement = format_time(avancement_raw)
@@ -30,7 +38,7 @@ def progress_bar(background, duration_raw, progress_percentage, color, xy, time_
     draw.text((xy[2] - duration_text_size, xy[1]), duration, fill=color, font=time_font)
     background = core.rounded_corner_rectangle(
         background,
-        Image.new("L", (
+        Image.new("RGB", (
             math.ceil(xy[2] - xy[0] - 20 * resolution_multiplicator - avancement_text_size - duration_text_size),
             math.ceil(width + 1)
         ), color),
@@ -70,7 +78,7 @@ def format_dec(number):
         return str(number)
 
 
-def generator():
+def generator(lyrics: bool):
     text_color = (255 * (variant == 1), 255 * (variant == 1), 255 * (variant == 1))
 
     # Getting track
@@ -94,7 +102,7 @@ def generator():
     )
     lyrics_font = ImageFont.truetype(
         font.black,
-        size=35 * resolution_multiplicator
+        size=40 * resolution_multiplicator
     )
 
     # Creation of background
@@ -133,7 +141,7 @@ def generator():
     # Creating overlay
     overlay = core.blurred_backround(cover,
                                      luminosity=0.2 * (variant == 0),
-                                     blur_radius=(65 * (variant == 0 or variant == 1)) + (27.5 * (variant == 2)),
+                                     blur_radius=(55 * (variant == 0 or variant == 1)) + (27.5 * (variant == 2)),
                                      resolution_multiplicator=resolution_multiplicator,
                                      width_ratio=width_ratio,
                                      darkness=0.5 * (variant == 1))
@@ -153,36 +161,29 @@ def generator():
     poster = core.rounded_corner_rectangle(poster, overlay, (overlay_width_offset, overlay_height_offset),
                                            50 * resolution_multiplicator)
 
-    if variant == 2:
-        alpha_channel = Image.new("L", poster.size,
-                                  (poster.crop(
-                                      (overlay_width_offset, overlay_height_offset) +
-                                      (overlay_width_offset + overlay_width,
-                                       overlay_height_offset + overlay_height))
-                                   .resize((1, 1)).convert("L").getpixel((0, 0)) < 128) * 255
-                                  ).convert("RGB")
+    if lyrics:
+        poster = lyrics_content(poster, cover, track, resolution_multiplicator, title_font,
+                                artist_font, overlay_width, overlay_width_offset, overlay_height_offset,
+                                128, lyrics_font, overlay_height)
     else:
-        alpha_channel = Image.new("L", poster.size, 255 * variant)
-
-    # poster = track_content(poster, cover, track, title_font, artist_font, time_font,
-    #                       overlay_width, overlay_width_offset, overlay_height_offset,
-    #                       alpha_channel)
-
-    poster = lyrics_content(poster, cover, track, resolution_multiplicator, title_font,
-                            artist_font, overlay_width, overlay_width_offset, overlay_height_offset,
-                            alpha_channel, lyrics_font, overlay_height)
+        poster = track_content(poster, cover, track, title_font, artist_font, time_font,
+                               overlay_width, overlay_width_offset, overlay_height_offset,
+                               110)
 
     target_file_name = "results/" + "Poster " + track.title + " - " + track.artist_name + ".png"
     poster.save(target_file_name)
-    # core.google_photo_api.cloud_upload(target_file_name.removeprefix("results/"))
+    # metadata = pyexiv2.Image(target_file_name, encoding='GBK')
+    # metadata.read_exif()
+    # print(metadata.read_exif())
+    core.google_photo_api.cloud_upload(target_file_name.removeprefix("results/"))
     poster.show()
 
 
-def lyrics_content(frame: Image, cover: Image, track: core.Track, resolution_multiplicator,
+def lyrics_content(frame: Image.Image, cover: Image.Image, track: core.Track, resolution_multiplicator,
                    title_font: ImageFont.FreeTypeFont, artist_font: ImageFont.FreeTypeFont,
-                   overlay_width, overlay_width_offset, overlay_height_offset, alpha_channel: Image,
+                   overlay_width, overlay_width_offset, overlay_height_offset, text_color_threshold,
                    lyrics_font: ImageFont.FreeTypeFont, overlay_height):
-    lyrics = lyrics_picker(track.title, track.artist_name)
+    lyrics = core.lyrics_picker(track.title, track.artist_name)
 
     poster = frame.copy()
     top_cover_padding = 30 * resolution_multiplicator
@@ -194,44 +195,65 @@ def lyrics_content(frame: Image, cover: Image, track: core.Track, resolution_mul
         overlay_height_offset + top_cover_padding
     ), top_cover_radius, 1)
 
-    infos_mask = Image.new("L", poster.size, 0)
-    draw = ImageDraw.Draw(infos_mask)
-    formatted_title = format_too_long(track.title, draw, title_font,
-                                      overlay_width - top_cover_padding * 3 - top_cover_side)
+    draw = ImageDraw.Draw(poster)
+    formatted_title = core.format_too_long(track.title, draw, title_font,
+                                           overlay_width - top_cover_padding * 3 - top_cover_side)
 
-    draw.multiline_text((
-        overlay_width_offset + top_cover_padding * 2 + top_cover_side,
-        overlay_height_offset + top_cover_padding + top_cover_radius / 3
-    ), formatted_title, 255, title_font, spacing=resolution_multiplicator)
-    draw.text((
-        overlay_width_offset + top_cover_padding * 2 + top_cover_side,
-        overlay_height_offset + top_cover_padding + top_cover_side - artist_font.size - top_cover_radius / 3
-    ), track.artist_name, 255, artist_font)
+    x_offset = overlay_width_offset + top_cover_padding * 2 + top_cover_side
+    y_offset = overlay_height_offset + top_cover_padding + top_cover_radius / 3
+    text_size = draw.textbbox((0, 0), formatted_title, font=title_font)
+    color = core.background_color(poster, (
+        x_offset,
+        y_offset,
+        x_offset + text_size[2],
+        y_offset + text_size[3]), text_color_threshold)
+    draw.multiline_text((x_offset, y_offset), formatted_title, color, title_font, spacing=resolution_multiplicator)
 
-    lyrics_padding = 1 * resolution_multiplicator
+    x_offset = overlay_width_offset + top_cover_padding * 2 + top_cover_side
+    y_offset = overlay_height_offset + top_cover_padding + top_cover_side - artist_font.size - top_cover_radius / 3
+    text_size = draw.textbbox((0, 0), track.artist_name, font=artist_font)
+    color = core.background_color(poster, (
+        x_offset,
+        y_offset,
+        x_offset + text_size[2],
+        y_offset + text_size[3]), text_color_threshold)
+    draw.text((x_offset, y_offset), track.artist_name, color, artist_font)
+
+    lyrics_padding = 30 * resolution_multiplicator
     formatted_lyrics = ""
-    for lyric in lyrics.rsplit("\n\n"):
-        formatted_lyrics += format_too_long(lyric, draw, lyrics_font,
-                                            overlay_width - lyrics_padding * 2) + "\n"
-    formatted_lyrics = formatted_lyrics.removesuffix("\n\n")
+    lyrics = lyrics.removesuffix("\n")
+    for lyric in lyrics.rsplit("\n"):
+        formatted_lyrics += core.format_too_long(
+            lyric,
+            draw,
+            lyrics_font,
+            overlay_width - lyrics_padding * 2,
+            wrap=True
+        ) + "\n"
+    formatted_lyrics = formatted_lyrics.removesuffix("\n\n").removeprefix("\n").removeprefix("\n")
 
-    lyrics_size = draw.multiline_textbbox((0, 0), formatted_lyrics, lyrics_font)
+    lyrics_size = draw.multiline_textbbox((0, 0), formatted_lyrics, lyrics_font, spacing=lyrics_font.size / 3)
     lyrics_height_offset = ((overlay_height_offset + overlay_height - lyrics_size[3] - lyrics_padding) +
                             (overlay_height_offset + top_cover_padding + top_cover_side + lyrics_padding)) / 2
     lyrics_width_offset = ((overlay_width_offset + lyrics_padding) +
                            (overlay_width_offset + overlay_width - lyrics_padding - lyrics_size[2])) / 2
+    color = core.background_color(poster,
+                                  (
+                                      lyrics_width_offset,
+                                      lyrics_height_offset,
+                                      lyrics_width_offset + lyrics_size[2],
+                                      lyrics_height_offset + lyrics_size[3]),
+                                  text_color_threshold)
     draw.multiline_text((lyrics_width_offset, lyrics_height_offset), formatted_lyrics,
-                        255, lyrics_font, spacing=lyrics_font.size / 3, align="center")
-
-    poster = Image.composite(alpha_channel, poster, infos_mask)
+                        color, lyrics_font, spacing=lyrics_font.size / 3, align="center")
 
     return poster
 
 
-def track_content(frame: Image, cover: Image, track: core.Track,
+def track_content(frame: Image.Image, cover: Image.Image, track: core.Track,
                   title_font: ImageFont.FreeTypeFont, artist_font: ImageFont.FreeTypeFont,
                   time_font: ImageFont.FreeTypeFont, overlay_width, overlay_width_offset,
-                  overlay_height_offset, alpha_channel: Image):
+                  overlay_height_offset, text_color_threshold):
     poster = frame.copy()
 
     # Center cover parameters calculations
@@ -259,82 +281,43 @@ def track_content(frame: Image, cover: Image, track: core.Track,
         20 * resolution_multiplicator)
 
     # Write infos
-    infos_mask = Image.new("L", poster.size, 0)
-    draw = ImageDraw.Draw(infos_mask)
+    draw = ImageDraw.Draw(poster)
+
     y_offset = center_cover_height_offset + center_cover_width + 35 * resolution_multiplicator
     x_offset = math.ceil(poster.width / 2 - draw.textlength(track.title, font=title_font) / 2)
-    draw.text((x_offset, y_offset), track.title, font=title_font, fill=255)
+    text_size = draw.textbbox((0, 0), track.title, font=title_font)
+    color = core.background_color(
+        poster,
+        (x_offset, y_offset, x_offset + text_size[2], y_offset + text_size[3]),
+        text_color_threshold
+    )
+    draw.text((x_offset, y_offset), track.title, font=title_font, fill=color)
+
     y_offset += artist_font.size + title_font.size / 2
     x_offset = math.ceil(poster.width / 2 - draw.textlength(track.artist_name, font=artist_font) / 2)
-    draw.text((x_offset, y_offset), track.artist_name, font=artist_font, fill=255)
+    text_size = draw.textbbox((0, 0), track.artist_name, font=artist_font)
+    color = core.background_color(
+        poster,
+        (x_offset, y_offset, x_offset + text_size[2], y_offset + text_size[3]),
+        text_color_threshold
+    )
+    draw.text((x_offset, y_offset), track.artist_name, font=artist_font, fill=color)
+
     x_offset = center_cover_width_offset
     y_offset += 75 * resolution_multiplicator
-    infos_mask = progress_bar(
-        infos_mask,
+    size = (x_offset, y_offset, x_offset + center_cover_width, y_offset + time_font.size)
+    color = core.background_color(poster, size, text_color_threshold)
+    poster = progress_bar(
+        poster,
         track.duration_raw,
         random.randint(5, 95),
-        255,
-        (x_offset, y_offset, x_offset + center_cover_width),
+        color,
+        size,
         time_font,
         resolution_multiplicator,
         time_font.size * 0.4
     )
-    poster = Image.composite(alpha_channel, poster, infos_mask)
     return poster
 
 
-def lyrics_picker(title: str, artist_name: str = ""):
-    lyrics = core.genius_api.get_lyrics(title, artist_name)
-    for i in range(len(lyrics)):
-        if "(" in lyrics[i]:
-            lyrics[i] = lyrics[i].rsplit("(")[0]
-        try:
-            if lyrics[i][0] == "[" and lyrics[i][1] != "?":
-                if lyrics[i].removeprefix("[").rsplit(" ")[0] == "Partie":
-                    print("\n--- " + lyrics[i].removeprefix("[").removesuffix("]") + " ---\n")
-                else:
-                    print("\n- " + lyrics[i].removeprefix("[").removesuffix("]") + " -\n")
-            else:
-                print(str(i) + ". " + lyrics[i])
-        except IndexError:
-            print(str(i) + ". " + lyrics[i])
-    lines = input("\nEntrez les lignes de paroles que vous voulez insérer séparés de ':' > ")
-    lines = lines.rsplit(":")
-    result = ""
-    try:
-        try:
-            for i in range(int(lines[0]), int(lines[1]) + 1):
-                result += lyrics[i] + "\n"
-            result.removesuffix("\n")
-            return result
-        except IndexError:
-            return lyrics[int(lines[0])]
-    except ValueError:
-        return ""
-
-
-def format_too_long(text, draw: ImageDraw.ImageDraw, font: ImageFont.FreeTypeFont,
-                    max_width):
-    formatted_title = text
-    floor = len(formatted_title) - 1
-    while draw.multiline_textbbox((0, 0), formatted_title, font)[2] > max_width:
-        space_pos = 0
-        for i in range(floor, 0, -1):
-            if text[i] == " ":
-                space_pos = i
-                break
-        new_string = ""
-        for i in range(len(text)):
-            if i == space_pos:
-                new_string += "\n"
-            else:
-                new_string += text[i]
-        formatted_title = new_string
-        floor -= 1
-        if floor < 1:
-            formatted_title = text
-            break
-    return formatted_title
-
-
-generator()
+generator(False)

@@ -84,6 +84,10 @@ def Generator():
             font.regular,
             size=math.ceil(album_infos_font_size))
 
+        center_image_padding_sides = math.ceil(poster_width * setting.center_image_padding_sides_percentage / 100)
+        center_image_padding_top = math.ceil(poster_width * setting.center_image_padding_top_percentage / 100)
+        center_image_size = math.ceil(poster_width - (center_image_padding_sides * 2))
+
         if len(album.album_name) > 10:
             album_name_font_size = setting.default_album_name_font_size_percentage * poster_height / 100 - (
                     len(album.album_name) - 10) * 0.7
@@ -92,6 +96,12 @@ def Generator():
         album_name_font = ImageFont.truetype(
             font.black,
             size=math.ceil(album_name_font_size))
+        album_name_font = core.format_too_long(
+            album.album_name,
+            ImageDraw.Draw(poster),
+            album_name_font,
+            center_image_size * 0.7
+        )
 
         if len(album.artist_name) > 15:
             artist_name_font_size = setting.default_artist_name_font_size_percentage * poster_height / 100 - (
@@ -102,10 +112,12 @@ def Generator():
         artist_name_font = ImageFont.truetype(
             font.regular,
             size=math.ceil(artist_name_font_size))
-
-        center_image_padding_sides = math.ceil(poster_width * setting.center_image_padding_sides_percentage / 100)
-        center_image_padding_top = math.ceil(poster_width * setting.center_image_padding_top_percentage / 100)
-        center_image_size = math.ceil(poster_width - (center_image_padding_sides * 2))
+        artist_name_font = core.format_too_long(
+            album.artist_name,
+            ImageDraw.Draw(poster),
+            artist_name_font,
+            center_image_size * 0.65
+        )
 
         center_image = cover.resize((center_image_size, center_image_size))
 
@@ -128,10 +140,10 @@ def Generator():
         top_offset = center_image_padding_top + center_image_size + poster_height * 0.015
         draw.text((center_image_padding_sides, top_offset), album.album_name.upper(), font=album_name_font)
 
-        top_offset += album_name_font_size + poster_height * 0.015
+        top_offset += album_name_font.size * 1.35
         draw.text((center_image_padding_sides, top_offset), album.artist_name.upper(), font=artist_name_font)
 
-        top_offset += artist_name_font_size + poster_height * 0.02
+        top_offset += artist_name_font.size * 1.35
         draw.line((center_image_padding_sides, top_offset) + (
             center_image_size + center_image_padding_sides, math.ceil(top_offset)),
                   width=math.ceil(0.0025 * poster_height))

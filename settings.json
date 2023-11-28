@@ -26,7 +26,7 @@
     "center_image_padding_sides_percentage": 13,
     "center_image_padding_top_percentage": 22,
     "background_darkness": 0.4,
-    "default_album_name_font_size_percentage": 3.7,
+    "default_album_name_font_size_percentage": 3.4,
     "default_artist_name_font_size_percentage": 2.7,
     "default_album_infos_font_size_percentage": 1.65,
     "resolution_multiplicator": 2,
