@@ -227,7 +227,7 @@ def getTrack(track_to_search):
     formatted_title = str(title.rsplit(" (feat")[0])
     formatted_title = str(formatted_title.rsplit(" (Extrait")[0])
     if len(response["contributors"]) > 1:
-        formatted_title = formatted_title + " (feat."
+        formatted_title = formatted_title + " (ft."
         contributors = []
         for i in range(1, len(response["contributors"])):
             if response["contributors"][i]["name"] != response["artist"]["name"] and \

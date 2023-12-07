@@ -27,9 +27,13 @@ def Generator():
         print("\nEntrez le nom d'un album :")
         album_to_search = input("> ")
         classement = None
+        max_per_column = None
         if " **" in album_to_search:
             classement = int(album_to_search.split(" **")[1])
             album_to_search = album_to_search.split(" **")[0]
+        if " ^^" in album_to_search:
+            max_per_column = int(album_to_search.split(" ^^")[1])
+            album_to_search = album_to_search.split(" ^^")[0]
 
         album = core.getAlbum(album_to_search)
 
@@ -37,18 +41,21 @@ def Generator():
         tracks_second = ""
         longest_track = 0
         longest_second_track = 0
-        if album.tracks_count_raw <= 10:
-            max_per_column = 6
-            default_text_font_size_percentage = 1.25 + 4 / min(album.tracks_count_raw, max_per_column)
-        elif album.tracks_count_raw <= 16:
-            max_per_column = 8
-            default_text_font_size_percentage = 1.2 + 4 / min(album.tracks_count_raw, max_per_column)
-        elif album.tracks_count_raw <= 24:
-            max_per_column = 12
-            default_text_font_size_percentage = 1.2
+        if max_per_column is None:
+            if album.tracks_count_raw <= 10:
+                max_per_column = 6
+                default_text_font_size_percentage = 1.25 + 4 / min(album.tracks_count_raw, max_per_column)
+            elif album.tracks_count_raw <= 16:
+                max_per_column = 8
+                default_text_font_size_percentage = 1.2 + 4 / min(album.tracks_count_raw, max_per_column)
+            elif album.tracks_count_raw <= 24:
+                max_per_column = 12
+                default_text_font_size_percentage = 1.2
+            else:
+                max_per_column = 15
+                default_text_font_size_percentage = 1
         else:
-            max_per_column = 15
-            default_text_font_size_percentage = 1
+            default_text_font_size_percentage = 1.2 + 4 / min(album.tracks_count_raw, max_per_column)
 
         cover = Image.open(album.cover_link).convert("RGB")
 
@@ -174,7 +181,7 @@ def Generator():
         poster.save(target_file_name)
         poster.show()
 
-        core.google_photo_api.cloud_upload(target_file_name.removeprefix("results/"))
+        #core.google_photo_api.cloud_upload(target_file_name.removeprefix("results/"))
 
         print("\nPoster réalisé avec enregistré sous " + target_file_name + " !\n\n\n")
 
