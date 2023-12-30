@@ -6,9 +6,9 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 
 import requests
 
-import base64
+import paths
 
-# If modifying these scopes, delete the file token.json.
+# If modifying these scopes, delete the file google_token.json.
 SCOPES = [
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
@@ -24,16 +24,13 @@ SCOPES = [
 
 album_id = "ALEeNUdYqPYVSSFOQssXd2k9tGbI1h8mH5F2UCv1jAPgfbvGNkr6woI"
 
-result_directory = "results/"
-
-
 def cloud_upload(name: str):
     creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
+    # The file google_token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    if os.path.exists("google_token.json"):
+        creds = Credentials.from_authorized_user_file("google_token.json", SCOPES)
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
@@ -44,7 +41,7 @@ def cloud_upload(name: str):
             )
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
-        with open("token.json", "w") as token:
+        with open("google_token.json", "w") as token:
             token.write(creds.to_json())
 
     bearer = "Bearer " + creds.token
@@ -54,7 +51,7 @@ def cloud_upload(name: str):
         "X-Goog-Upload-Content-Type": "image/png",
         "X-Goog-Upload-Protocol": "raw"
     }
-    file = open(result_directory + name, "rb")
+    file = open(paths.results_directory + name, "rb")
     upload_token = requests.post("https://photoslibrary.googleapis.com/v1/uploads", data=file.read(), headers=headers).text
     creation_body = {
         # "albumId": album_id,

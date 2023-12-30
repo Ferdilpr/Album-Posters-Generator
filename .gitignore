@@ -1,4 +1,6 @@
 downloaded_covers/
 results/
-token.json
+google_token.json
 venv/
+secrets.py
+deezer_token

@@ -1,11 +1,14 @@
-from PIL import Image
+import math
 
-fonts_directory = "fonts/"
+from PIL import Image
+import paths
+import requests
+import shutil
 
 
 class Fonts:
     def __init__(self, name):
-        self.directory = fonts_directory + name + "/"
+        self.directory = paths.fonts_directory + name + "/"
         self.black = Font(self.directory + name + "-Black.ttf")
         self.extra_bold = Font(self.directory + name + "-ExtraBold.ttf")
         self.bold = Font(self.directory + name + "-Bold.ttf")
@@ -119,45 +122,3 @@ class Setting(object):
         copy.name = name
 
         return copy
-
-
-class Album:
-
-    def __init__(self, _album_name="", _release_date="", _tracks_count_raw=0,
-                 _tracks_count="", _duration_raw="", _duration="", _cover_link="",
-                 _tracks=None, _artist_name="", _label=""):
-        if _tracks is None:
-            _tracks = []
-        self.album_name = _album_name
-        self.release_date = _release_date
-        self.tracks_count_raw = _tracks_count_raw
-        self.tracks_count = _tracks_count
-        self.duration_raw = _duration_raw
-        self.duration = _duration
-        self.cover_link = _cover_link
-        self.tracks = _tracks
-        self.artist_name = _artist_name
-        self.label = _label
-
-
-class Track:
-    def __init__(
-            self,
-            title: str,
-            duration_raw: int,
-            duration: str,
-            explicit_lyrics: bool,
-            artist_name: str,
-            album_name: str,
-            file_name: str,
-            cover_link: str
-    ):
-        self.title = title
-        self.duration_raw = duration_raw
-        self.duration = duration
-        self.explicit_lyrics = explicit_lyrics
-        self.artist_name = artist_name
-        self.album_name = album_name
-        self.file_name = file_name
-        self.cover_link = cover_link
-        self.cover = Image.open(cover_link).convert("RGB")

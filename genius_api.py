@@ -1,4 +1,5 @@
 import lyricsgenius
+import paths
 
 TOKEN = "QfowmHjM3hdXb8N9pGARnSh1DDVwATgl_VZRaWEIUjrzvkCd_1OyuGDRe18xvDWr"
 

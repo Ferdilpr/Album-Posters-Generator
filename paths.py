@@ -1,0 +1,20 @@
+deezer_domain = "https://api.deezer.com/"
+album_search_domain = deezer_domain + "search/album"
+track_search_domain = deezer_domain + "search/track"
+album_domain = deezer_domain + "album/"
+track_domain = deezer_domain + "track/"
+user_domain = deezer_domain + "user/"
+playlist_domain = deezer_domain + "playlist/"
+charts_domain = deezer_domain + "chart/"
+
+results_directory = "results/"
+fonts_directory = "fonts/"
+absolute_directory = "C:/Users/ferdinandleprince/PycharmProjects/pythonProject/"
+download_directory = absolute_directory + "downloaded_covers/"
+
+deezer_api_redirect = "https://ryder-pote-api.000webhostapp.com/save_code.php"
+deezer_get_code_page = "https://ryder-pote-api.000webhostapp.com/code.php"
+
+deezer_oauth_domain = "https://connect.deezer.com/oauth/"
+get_code_domain = deezer_oauth_domain + "auth.php"
+get_token_url = deezer_oauth_domain + "access_token.php"

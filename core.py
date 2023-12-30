@@ -2,29 +2,17 @@ from __future__ import print_function
 import math
 
 import PIL
-import requests
-import shutil
-from datetime import datetime
 from PIL import Image, ImageFilter, ImageEnhance, ImageDraw, ImageFont
 import json
 from random import randrange
 
 import genius_api
 import google_photo_api
-from classes import Font, Fonts, Album, Track, fonts_directory, Setting
+from classes import Font, Fonts, Setting
 
-DOMAIN = "https://api.deezer.com/"
-album_search_domain = DOMAIN + "search/album"
-track_search_domain = DOMAIN + "search/track"
-album_domain = DOMAIN + "album/"
-track_domain = DOMAIN + "track/"
+import paths
 
-results_directory = "results/"
-
-google_photo_api.result_directory = results_directory
-
-absolute_directory = "C:/Users/ferdinandleprince/PycharmProjects/pythonProject/"
-download_directory = absolute_directory + "downloaded_covers/"
+from deezer_api import fetch_track, fetch_album, search_track, search_album, Track, Album
 
 
 def getSettings():
@@ -121,11 +109,11 @@ def customSetting(settings, settings_list):
                 float(input("flou de l'ombre de la cover (6 par défaut) > ")),
                 float(input("pourcentage de la largeur, de l'ombre de la cover (1 par défaut) > ")),
                 (
-                    print(input(
+                    int(input(
                         "valeur de 0 à 255 de la quantité de rouge dans la couleur de l'ombre (10 par défaut) > ")),
-                    print(input("valeur de 0 à 255 de la quantité de vert dans la couleur de l'ombre (10 par "
+                    int(input("valeur de 0 à 255 de la quantité de vert dans la couleur de l'ombre (10 par "
                                 "défaut) > ")),
-                    print(input("valeur de 0 à 255 de la quantité de bleu dans la couleur de l'ombre (10 par "
+                    int(input("valeur de 0 à 255 de la quantité de bleu dans la couleur de l'ombre (10 par "
                                 "défaut) > ")),
                 ),
                 float(input("multiplicateur de la saturation de l'arrière plan (" + str(
@@ -137,149 +125,11 @@ def customSetting(settings, settings_list):
         except ValueError:
             print("\n\n        Mauvaise valeur entrée, utilisation du profile par défault. \n")
             setting = settings["default"]
-
     return setting
 
 
-def getAlbum(album_to_search):
-    PARAMS = {"q": album_to_search}
-
-    response_raw = requests.get(url=album_search_domain, params=PARAMS)
-    response = response_raw.json()
-    result_id = str(response["data"][0]["id"])
-
-    response_raw = requests.get(url=album_domain + result_id)
-    response = response_raw.json()
-
-    album_name = response["title"]
-
-    artist_name = response["artist"]["name"]
-    if len(response["contributors"]) > 1:
-        for i in range(1, len(response["contributors"])):
-            artist_name = artist_name + ", " + response["contributors"][i]["name"]
-
-    release_date_raw = response["release_date"]
-    release_date = datetime.strptime(release_date_raw, "%Y-%m-%d").strftime('%d/%m/%Y')
-
-    tracks_count_raw = math.ceil(response["nb_tracks"])
-    tracks_count = str(tracks_count_raw) + " titres"
-    if tracks_count_raw > 22:
-        RuntimeError("The album contains too much tracks")
-
-    duration_raw = response["duration"]
-    minutes = math.floor(duration_raw / 60)
-    seconds = duration_raw - minutes * 60
-    if seconds >= 10:
-        seconds_formated = str(seconds)
-    else:
-        seconds_formated = "0" + str(seconds)
-    duration = str(minutes) + " min " + seconds_formated
-
-    if response["cover_xl"] is not None:
-        file_name = album_name + " - " + artist_name + ".jpg"
-        image_response = requests.get(response["cover_xl"], stream=True)
-        with open(download_directory + file_name, "wb") as f:
-            shutil.copyfileobj(image_response.raw, f)
-    else:
-        file_name = input(
-            "\n Aucune cover n'est renseignée pour l'instant, téléchargez-en une dans le répertoire " + download_directory + " puis entrez le nom du fichier. \n > ")
-
-    cover_link = download_directory + file_name
-
-    tracks = []
-    tracks_raw = response["tracks"]["data"]
-    for track in tracks_raw:
-        formatted_title = str(track["title"].rsplit(" (")[0])
-        track_response_raw = requests.get(track_domain + str(track["id"]))
-        track_response = track_response_raw.json()
-        if len(track_response["contributors"]) > len(response["contributors"]):
-            formatted_title = formatted_title + " (ft."
-            contributors = []
-            for i in range(len(response["contributors"]), len(track_response["contributors"])):
-                if track_response["contributors"][i]["name"] != response["artist"]["name"] and \
-                        track_response["contributors"][i]["name"] not in contributors:
-                    contributors.append(track_response["contributors"][i]["name"])
-            for contributor in contributors:
-                formatted_title = formatted_title + " " + contributor + ","
-            formatted_title = formatted_title.removesuffix(",")
-            formatted_title = formatted_title + ")"
-        track["title"] = formatted_title
-        tracks.append(track)
-
-    label = response["label"]
-
-    album = Album(album_name, release_date, tracks_count_raw, tracks_count, duration_raw,
-                  duration, cover_link, tracks, artist_name, label)
-    return album
-
-
-def getTrack(track_to_search):
-    PARAMS = {"q": track_to_search}
-
-    response_raw = requests.get(url=track_search_domain, params=PARAMS)
-    response = response_raw.json()
-    result_id = str(response["data"][0]["id"])
-
-    response_raw = requests.get(url=track_domain + result_id)
-    response = response_raw.json()
-
-    title = response["title"]
-    formatted_title = str(title.rsplit(" (feat")[0])
-    formatted_title = str(formatted_title.rsplit(" (Extrait")[0])
-    if len(response["contributors"]) > 1:
-        formatted_title = formatted_title + " (ft."
-        contributors = []
-        for i in range(1, len(response["contributors"])):
-            if response["contributors"][i]["name"] != response["artist"]["name"] and \
-                    response["contributors"][i]["name"] not in contributors:
-                contributors.append(response["contributors"][i]["name"])
-        for contributor in contributors:
-            formatted_title = formatted_title + " " + contributor + ","
-        formatted_title = formatted_title.removesuffix(",")
-        formatted_title = formatted_title + ")"
-    title = formatted_title
-
-    duration_raw = response["duration"]
-    minutes = math.floor(duration_raw / 60)
-    seconds = duration_raw - minutes * 60
-    if seconds >= 10:
-        seconds_formated = str(seconds)
-    else:
-        seconds_formated = "0" + str(seconds)
-    duration = str(minutes) + ":" + seconds_formated
-    explicit_lyrics = response["explicit_lyrics"]
-    artist_name = response["artist"]["name"]
-
-    album_id = response["album"]["id"]
-    album_response = requests.get(album_domain + str(album_id)).json()
-    if album_response["nb_tracks"] > 1:
-        album_name = album_response["title"]
-    else:
-        album_name = None
-
-    if response["album"]["cover_xl"] is not None:
-        file_name = album_response["title"] + " - " + artist_name + ".jpg"
-        image_response = requests.get(response["album"]["cover_xl"], stream=True)
-        with open(download_directory + file_name, "wb") as f:
-            shutil.copyfileobj(image_response.raw, f)
-    else:
-        file_name = input(
-            "\n Aucune cover n'est renseignée pour l'instant, téléchargez-en une dans le répertoire " + download_directory + " puis entrez le nom du fichier. \n > ")
-    cover_link = download_directory + file_name
-
-    return Track(
-        title,
-        duration_raw,
-        duration,
-        explicit_lyrics,
-        artist_name,
-        album_name,
-        file_name,
-        cover_link
-    )
-
-
 def lyrics_picker(title: str, artist_name: str = ""):
+    title = title.split("(")[0]
     lyrics = genius_api.get_lyrics(title, artist_name)
     for i in range(len(lyrics)):
         if "(" in lyrics[i]:
@@ -469,9 +319,13 @@ def rounded_corner_triangle(image1: Image, image2: Image, xy, radius, opacity=1)
     mask = Image.new("L", image1.size, 0)
     draw = ImageDraw.Draw(mask)
 
-    draw.line((xy[0] + radius, xy[1] + image2.height / 2 - radius) + (xy[0] + image2.width - radius * 2, xy[1] + radius), 255 * opacity)
-    draw.line((xy[0] + radius, xy[1] + image2.height / 2 + radius) + (xy[0] + image2.width - radius * 2, xy[1] + image2.height - radius), 255 * opacity)
-    draw.line((xy[0] + image2.width, xy[1] + radius) + (xy[0] + image2.width, xy[1] + image2.height - radius), 255 * opacity)
+    draw.line(
+        (xy[0] + radius, xy[1] + image2.height / 2 - radius) + (xy[0] + image2.width - radius * 2, xy[1] + radius),
+        255 * opacity)
+    draw.line((xy[0] + radius, xy[1] + image2.height / 2 + radius) + (
+    xy[0] + image2.width - radius * 2, xy[1] + image2.height - radius), 255 * opacity)
+    draw.line((xy[0] + image2.width, xy[1] + radius) + (xy[0] + image2.width, xy[1] + image2.height - radius),
+              255 * opacity)
     draw.arc((xy[0], xy[1] + image2.height / 2 - radius) + (xy[0] + radius, xy[1] + image2.height / 2 + radius), 90,
              -90, 255 * opacity)
     draw.arc((xy[0] + image2.width - radius * 2, xy[1]) + (xy[0] + image2.width, xy[1] + radius), 150,

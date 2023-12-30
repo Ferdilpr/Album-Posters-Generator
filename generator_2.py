@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 import pyexiv2
 
 # Parameters
-resolution_multiplicator = 10
+resolution_multiplicator = 2
 width_ratio = 56.25
 overlay_width_percentage = 80
 overlay_height_percentage = 67
@@ -79,11 +79,9 @@ def format_dec(number):
 
 
 def generator(show_lyrics: bool, height=None):
-    text_color = (255 * (variant == 1), 255 * (variant == 1), 255 * (variant == 1))
-
     # Getting track
     track_to_get = input("titre > ")
-    track = core.getTrack(track_to_get)
+    track = core.search_track(track_to_get, download_cover=True)
     cover = track.cover
 
     title_font_size = math.ceil(min(30.0, 30 - max(0, len(track.title) - 5) * 0.3) * resolution_multiplicator)
@@ -91,7 +89,7 @@ def generator(show_lyrics: bool, height=None):
         font.bold,
         size=title_font_size
     )
-    artist_font_size = math.ceil(min(25.0, 25 - max(0, len(track.artist_name) - 8) * 0.425) * resolution_multiplicator)
+    artist_font_size = math.ceil(min(25.0, 25 - max(0, len(track.artist.name) - 8) * 0.425) * resolution_multiplicator)
     artist_font = ImageFont.truetype(
         font.light,
         size=artist_font_size
@@ -117,7 +115,8 @@ def generator(show_lyrics: bool, height=None):
     overlay_width = background.width * overlay_width_percentage / 100
 
     if show_lyrics:
-        lyrics = core.lyrics_picker(track.title, track.artist_name)
+        print(track.title + " - " + track.artist.name)
+        lyrics = core.lyrics_picker(track.title, track.artist.name)
 
         top_cover_padding = 30 * resolution_multiplicator
         top_cover_side = 80 * resolution_multiplicator
@@ -145,7 +144,11 @@ def generator(show_lyrics: bool, height=None):
 
         overlay_height = top_cover_padding + top_cover_side + lyrics_padding[1] * 2 + lyrics_size[3]
     else:
-        pass
+        center_cover_padding_sides = math.ceil(overlay_width * center_cover_padding_sides_percentage / 100)
+        center_cover_padding_top = math.ceil(overlay_width * center_cover_padding_top_percentage / 100)
+        center_cover_width = math.ceil(overlay_width - center_cover_padding_sides * 2)
+        overlay_height = (3 * center_cover_padding_top + center_cover_width + 35 * resolution_multiplicator +
+                          artist_font.size + title_font.size / 2 + 75 * resolution_multiplicator)
 
     overlay_width_offset = math.ceil((background.width - overlay_width) / 2)
     overlay_height_offset = math.ceil((background.height - overlay_height) / 2)
@@ -192,19 +195,19 @@ def generator(show_lyrics: bool, height=None):
                                            50 * resolution_multiplicator)
 
     if show_lyrics:
-        poster = lyrics_content(poster, track.title, track.artist_name, formatted_lyrics, top_cover_side,
+        poster = lyrics_content(poster, track.title, track.artist.name, formatted_lyrics, top_cover_side,
                                 resolution_multiplicator, top_cover, top_cover_padding, title_font, artist_font,
                                 overlay_width, overlay_width_offset, overlay_height_offset, 128,
                                 lyrics_font, overlay_height, top_cover_radius, lyrics_padding, lyrics_size)
     else:
         poster = track_content(poster, cover, track, title_font, artist_font, time_font,
-                               overlay_width, overlay_width_offset, overlay_height_offset,
-                               110)
+                               center_cover_width, overlay_width_offset, overlay_height_offset,
+                               110, center_cover_padding_sides, center_cover_padding_top)
 
-    target_file_name = "results/" + "Poster " + track.title + " - " + track.artist_name + ".png"
+    target_file_name = "results/" + "Poster " + track.title + " - " + track.artist.name + ".png"
     poster.save(target_file_name)
-    metadata = pyexiv2.Image(target_file_name, encoding='GBK')
-    metadata.modify_exif({'Exif.Image.Artist': "Ferdi_lpr"})
+    #metadata = pyexiv2.Image(target_file_name)
+    #metadata.modify_exif({'Exif.Image.Artist': "Ferdi_lpr"})
     core.google_photo_api.cloud_upload(target_file_name.removeprefix("results/"))
     poster.show()
 
@@ -256,18 +259,13 @@ def lyrics_content(poster: Image.Image, title: str, artist_name: str, lyrics: st
 
 def track_content(frame: Image.Image, cover: Image.Image, track: core.Track,
                   title_font: ImageFont.FreeTypeFont, artist_font: ImageFont.FreeTypeFont,
-                  time_font: ImageFont.FreeTypeFont, overlay_width, overlay_width_offset,
-                  overlay_height_offset, text_color_threshold):
+                  time_font: ImageFont.FreeTypeFont, center_cover_width, overlay_width_offset,
+                  overlay_height_offset, text_color_threshold, center_cover_padding_sides,
+                  center_cover_padding_top):
     poster = frame.copy()
-
-    # Center cover parameters calculations
-    center_cover_padding_sides = math.ceil(overlay_width * center_cover_padding_sides_percentage / 100)
-    center_cover_padding_top = math.ceil(overlay_width * center_cover_padding_top_percentage / 100)
 
     center_cover_width_offset = overlay_width_offset + center_cover_padding_sides
     center_cover_height_offset = overlay_height_offset + center_cover_padding_top
-
-    center_cover_width = math.ceil(overlay_width - center_cover_padding_sides * 2)
 
     # Place shadow
     poster = core.square_shadow(poster, (
@@ -298,14 +296,14 @@ def track_content(frame: Image.Image, cover: Image.Image, track: core.Track,
     draw.text((x_offset, y_offset), track.title, font=title_font, fill=color)
 
     y_offset += artist_font.size + title_font.size / 2
-    x_offset = math.ceil(poster.width / 2 - draw.textlength(track.artist_name, font=artist_font) / 2)
-    text_size = draw.textbbox((0, 0), track.artist_name, font=artist_font)
+    x_offset = math.ceil(poster.width / 2 - draw.textlength(track.artist.name, font=artist_font) / 2)
+    text_size = draw.textbbox((0, 0), track.artist.name, font=artist_font)
     color = core.background_color(
         poster,
         (x_offset, y_offset, x_offset + text_size[2], y_offset + text_size[3]),
         text_color_threshold
     )
-    draw.text((x_offset, y_offset), track.artist_name, font=artist_font, fill=color)
+    draw.text((x_offset, y_offset), track.artist.name, font=artist_font, fill=color)
 
     x_offset = center_cover_width_offset
     y_offset += 75 * resolution_multiplicator
@@ -322,6 +320,3 @@ def track_content(frame: Image.Image, cover: Image.Image, track: core.Track,
         time_font.size * 0.4
     )
     return poster
-
-
-generator(True)

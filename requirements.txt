@@ -7,3 +7,4 @@ scipy~=1.11.3
 Pillow~=10.0.1
 google~=3.0.0
 lyricsgenius~=3.0.1
+pyexiv2~=2.9.0

@@ -3,7 +3,7 @@ from PIL import Image, ImageFilter, ImageDraw, ImageFont
 import core
 
 
-def Generator():
+def generator():
     while True:
         settings_list = core.getSettings()
         dict_scaffold = []
@@ -35,27 +35,17 @@ def Generator():
             max_per_column = int(album_to_search.split(" ^^")[1])
             album_to_search = album_to_search.split(" ^^")[0]
 
-        album = core.getAlbum(album_to_search)
+        album = core.search_album(album_to_search, download_cover=True)
+        for track in album.tracks:
+            track.format_title()
 
         tracks = ""
         tracks_second = ""
         longest_track = 0
         longest_second_track = 0
         if max_per_column is None:
-            if album.tracks_count_raw <= 10:
-                max_per_column = 6
-                default_text_font_size_percentage = 1.25 + 4 / min(album.tracks_count_raw, max_per_column)
-            elif album.tracks_count_raw <= 16:
-                max_per_column = 8
-                default_text_font_size_percentage = 1.2 + 4 / min(album.tracks_count_raw, max_per_column)
-            elif album.tracks_count_raw <= 24:
-                max_per_column = 12
-                default_text_font_size_percentage = 1.2
-            else:
-                max_per_column = 15
-                default_text_font_size_percentage = 1
-        else:
-            default_text_font_size_percentage = 1.2 + 4 / min(album.tracks_count_raw, max_per_column)
+            max_per_column = 10
+        default_text_font_size_percentage = 1.8
 
         cover = Image.open(album.cover_link).convert("RGB")
 
@@ -67,63 +57,33 @@ def Generator():
 
         (poster_width, poster_height) = poster.size
 
-        text_font_size = default_text_font_size_percentage * poster_height / 100
-        ImageDraw.ImageDraw.font = ImageFont.truetype(
-            font.light.italic(),
-            size=math.ceil(text_font_size))
-
-        for i in range(0, min(album.tracks_count_raw, max_per_column)):
-            track_title = album.tracks[i]["title"]
-            formated_track = str(i + 1) + ". " + track_title + "\n"
-            tracks += formated_track
-            if ImageDraw.ImageDraw.font.getlength(formated_track) > longest_track:
-                longest_track = ImageDraw.ImageDraw.font.getlength(formated_track)
-
-        for i in range(max_per_column, album.tracks_count_raw):
-            track_title = album.tracks[i]["title"]
-            formated_track_second = str(i + 1) + ". " + track_title + "\n"
-            tracks_second += formated_track_second
-            if ImageDraw.ImageDraw.font.getlength(formated_track_second) > longest_second_track:
-                longest_second_track = ImageDraw.ImageDraw.font.getlength(formated_track_second)
-
-        album_infos_font_size = setting.default_album_infos_font_size_percentage * poster_height / 100
-        album_infos_font = ImageFont.truetype(
-            font.regular,
-            size=math.ceil(album_infos_font_size))
-
         center_image_padding_sides = math.ceil(poster_width * setting.center_image_padding_sides_percentage / 100)
         center_image_padding_top = math.ceil(poster_width * setting.center_image_padding_top_percentage / 100)
         center_image_size = math.ceil(poster_width - (center_image_padding_sides * 2))
 
-        if len(album.album_name) > 10:
-            album_name_font_size = setting.default_album_name_font_size_percentage * poster_height / 100 - (
-                    len(album.album_name) - 10) * 0.7
-        else:
-            album_name_font_size = setting.default_album_name_font_size_percentage * poster_height / 100
         album_name_font = ImageFont.truetype(
             font.black,
-            size=math.ceil(album_name_font_size))
-        album_name_font = core.format_too_long(
-            album.album_name,
-            ImageDraw.Draw(poster),
-            album_name_font,
-            center_image_size * 0.7
+            size=35 * setting.resolution_multiplicator
         )
+        while album_name_font.getlength(album.title.upper()) > center_image_size * 0.65:
+            album_name_font = ImageFont.truetype(
+                font.black,
+                size=album_name_font.size - setting.resolution_multiplicator
+            )
 
-        if len(album.artist_name) > 15:
-            artist_name_font_size = setting.default_artist_name_font_size_percentage * poster_height / 100 - (
-                    len(album.artist_name) - 10) * 0.25
-        else:
-            artist_name_font_size = setting.default_artist_name_font_size_percentage * poster_height / 100 - (
-                    len(album.album_name) - 10) * 0.15
         artist_name_font = ImageFont.truetype(
             font.regular,
-            size=math.ceil(artist_name_font_size))
-        artist_name_font = core.format_too_long(
-            album.artist_name,
-            ImageDraw.Draw(poster),
-            artist_name_font,
-            center_image_size * 0.65
+            size=album_name_font.size
+        )
+        while artist_name_font.getlength(album.artists_formatted.upper()) > center_image_size * 0.65:
+            artist_name_font = ImageFont.truetype(
+                font.regular,
+                size=artist_name_font.size - setting.resolution_multiplicator
+            )
+
+        album_infos_font = ImageFont.truetype(
+            font.regular,
+            size=int(album_name_font.size * 0.6)
         )
 
         center_image = cover.resize((center_image_size, center_image_size))
@@ -145,47 +105,133 @@ def Generator():
 
         draw = ImageDraw.Draw(poster)
         top_offset = center_image_padding_top + center_image_size + poster_height * 0.015
-        draw.text((center_image_padding_sides, top_offset), album.album_name.upper(), font=album_name_font)
+        draw.text((center_image_padding_sides, top_offset), album.title.upper(), font=album_name_font)
 
         top_offset += album_name_font.size * 1.35
-        draw.text((center_image_padding_sides, top_offset), album.artist_name.upper(), font=artist_name_font)
+        draw.text((center_image_padding_sides, top_offset), album.artists_formatted.upper(), font=artist_name_font)
 
         top_offset += artist_name_font.size * 1.35
         draw.line((center_image_padding_sides, top_offset) + (
             center_image_size + center_image_padding_sides, math.ceil(top_offset)),
                   width=math.ceil(0.0025 * poster_height))
 
-        line_spacing = text_font_size / 2.5
         top_offset += poster_height * 0.02
-        draw.multiline_text((center_image_padding_sides, top_offset), tracks, spacing=line_spacing)
-        tracks_second_offset = ((poster_width - center_image_padding_sides - longest_second_track) + (
-                center_image_padding_sides + longest_track)) / 2
-        draw.multiline_text((tracks_second_offset, top_offset),
-                            tracks_second, spacing=line_spacing)
 
-        line_spacing = album_infos_font_size / 2.5
-        album_infos = album.tracks_count + "\n" + album.release_date + "\n" + album.duration
-        top_offset = center_image_padding_top + center_image_size + poster_height * 0.05
-        draw.multiline_text((poster_width - center_image_padding_sides, top_offset), album_infos, align="right",
-                            anchor="rm", font=album_infos_font)
+        first_column, second_column = [], []
+        tracks_space = (center_image_size, poster_height - top_offset - center_image_padding_top)
+        tracks_font = ImageFont.truetype(
+            font.light.italic(),
+            size=21 * setting.resolution_multiplicator
+        )
+        line_spacing_multiplicator = 0.35
+        end = False
+        while True:
+            for i in range(album.tracks_count_raw, math.ceil(album.tracks_count_raw / 2) - 1, -1):
+                first_column_tracks = album.tracks[0:i]
+                second_column_tracks = album.tracks[i:album.tracks_count_raw]
+                first_column = list(
+                    (str(x + 1) + ". " + first_column_tracks[x].title)
+                    for x in range(len(first_column_tracks))
+                )
+                second_column = list(
+                    (str(x + i + 1) + ". " + second_column_tracks[x].title)
+                    for x in range(len(second_column_tracks))
+                )
+                first_column_size = draw.multiline_textbbox(
+                    (0, 0),
+                    "\n".join(first_column[0:len(second_column) + 1]),
+                    font=tracks_font,
+                    spacing=tracks_font.size * line_spacing_multiplicator
+                )[2:4]
+                whole_first_column_size = draw.multiline_textbbox(
+                    (0, 0),
+                    "\n".join(first_column),
+                    font=tracks_font,
+                    spacing=tracks_font.size * line_spacing_multiplicator
+                )[2:4]
+                second_column_size = draw.multiline_textbbox(
+                    (0, 0),
+                    "\n".join(second_column),
+                    font=tracks_font,
+                    spacing=tracks_font.size * line_spacing_multiplicator
+                )[2:4]
+                if (first_column_size[0] + second_column_size[0] + poster_width * 0.1 < tracks_space[0]
+                        and whole_first_column_size[0] + poster_width * 0.05 < tracks_space[0]
+                        and whole_first_column_size[1] < tracks_space[1]):
+                    end = True
+                    break
+            if end:
+                break
+
+            tracks_font = ImageFont.truetype(
+                font.light.italic(),
+                size=int(tracks_font.size - setting.resolution_multiplicator / 5)
+            )
+
+        draw.multiline_text(
+            (center_image_padding_sides, top_offset),
+            "\n".join(first_column),
+            font=tracks_font,
+            spacing=tracks_font.size * line_spacing_multiplicator
+        )
+        second_column_size = draw.multiline_textbbox(
+            (0, 0),
+            "\n".join(second_column),
+            font=tracks_font,
+            spacing=tracks_font.size * line_spacing_multiplicator
+        )[2:4]
+        if first_column_size[0] < whole_first_column_size[0]:
+            vertical = poster_width - center_image_padding_sides - second_column_size[0]
+        else:
+            vertical = (
+                            poster_width - center_image_padding_sides - second_column_size[0] +
+                            center_image_padding_sides + first_column_size[0]
+                       ) / 2
+        draw.multiline_text(
+            (vertical, top_offset),
+            "\n".join(second_column),
+            font=tracks_font,
+            spacing=tracks_font.size * line_spacing_multiplicator
+        )
+
+        album_infos = album.tracks_count + "\n" + album.release_date + "\n" + album.duration.replace(":", " min ")
+        album_infos_size = draw.multiline_textbbox(
+            (0, 0),
+            album_infos,
+            align="right",
+            font=album_infos_font,
+            spacing=album_infos_font.size * 0.25
+        )
+        top_offset = (
+                center_image_padding_top + center_image_size +
+                center_image_padding_top + center_image_size + poster_height * 0.015 + album_name_font.size * 1.35 + artist_name_font.size * 1.35 - album_infos_size[3]
+        ) / 2
+        draw.multiline_text(
+            (poster_width - center_image_padding_sides, top_offset),
+            album_infos,
+            align="right",
+            anchor="ra",
+            font=album_infos_font,
+            spacing=album_infos_font.size * 0.25
+        )
 
         if classement is not None:
             poster = core.classement(poster, classement, setting.resolution_multiplicator, font)
 
         if setting.name == "default":
-            target_file_name = "results/" + "Poster " + album.album_name + " - " + album.artist_name + ".png"
+            target_file_name = "results/" + "Poster " + album.title + " - " + album.artist.name + ".png"
         else:
-            target_file_name = "results/" + "Poster " + album.album_name + " - " + album.artist_name + " (" + setting.name + ")" + ".png"
+            target_file_name = "results/" + "Poster " + album.title + " - " + album.artist.name + " (" + setting.name + ")" + ".png"
         if classement is not None:
             target_file_name = target_file_name.removesuffix(".png") + " [" + str(classement) + "].png"
         poster.save(target_file_name)
+
+        core.google_photo_api.cloud_upload(target_file_name.removeprefix("results/"))
         poster.show()
 
-        #core.google_photo_api.cloud_upload(target_file_name.removeprefix("results/"))
-
-        print("\nPoster réalisé avec enregistré sous " + target_file_name + " !\n\n\n")
+        print("\nPoster réalisé avec succès et enregistré sous " + target_file_name + " !\n\n\n")
 
 
 print("Bienvenue dans le générateur de poster de cover d'album !\n")
 
-Generator()
+# generator()
