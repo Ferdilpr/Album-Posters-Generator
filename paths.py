@@ -9,7 +9,7 @@ charts_domain = deezer_domain + "chart/"
 
 results_directory = "results/"
 fonts_directory = "fonts/"
-absolute_directory = "C:/Users/ferdinandleprince/PycharmProjects/pythonProject/"
+absolute_directory = "C:/Users/ferdi/PycharmProjects/Album-Posters-Generator/"
 download_directory = absolute_directory + "downloaded_covers/"
 
 deezer_api_redirect = "https://ryder-pote-api.000webhostapp.com/save_code.php"
