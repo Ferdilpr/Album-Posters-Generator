@@ -80,9 +80,8 @@ def fetch_track(track_id, object=None, album_contributors=None, download_cover: 
 
 def format_title(track_object, album_contributors=None):
     if album_contributors is None:
-        album_contributors = track_object.artist
+        album_contributors = [track_object.artist]
     if track_object.contributors is None:
-        RuntimeError("No contributors")
         return
 
     formatted_title = str(track_object.title.rsplit(" (feat")[0])
